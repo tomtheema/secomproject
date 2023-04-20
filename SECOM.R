@@ -46,5 +46,26 @@ df2 <- data.frame(secom.labels.renamed)
 secom <- bind_cols(df2, df1)
 tibble(secom)
 
-# IV Descriptive analysis
-# 1 Calculate variance of each feature
+##-------------------------------------------------------------
+
+# Check for missing values in each column
+col_missing <- colSums(is.na(secom))
+missing_cols <- names(which(col_missing > 0))
+num_missing_cols <- col_missing[missing_cols]
+percent_missing_cols <- round(num_missing_cols / nrow(data) * 100, 2)
+
+# Create a table of missing values by column
+missing_data_cols <- data.frame(column = missing_cols, 
+                           missing_values = num_missing_cols, 
+                           percent_missing = percent_missing_cols)
+missing_table_cols <- missing_data_cols[order(missing_data_cols$missing_values, decreasing = TRUE), ]
+print(head(missing_table_cols,200))
+
+# Create a histogram of percentages of missing values
+library(ggplot2)
+ggplot(data = data.frame(percent_missing_cols), aes(x = percent_missing_cols)) +
+  geom_histogram(binwidth = 1, color = "black", fill = "blue") +
+  labs(title = "Histogram of Percentages of Missing Values per Column", 
+       x = "% Missing Values", y = "Count")
+
+##-------------------------------------------------------------
