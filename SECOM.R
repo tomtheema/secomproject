@@ -99,22 +99,23 @@ data_hist %>%
 # -----------------------------------------------------------------------------
 
 # 2 Missing values
-# Check for missing values in each column
+# 2.1 Check for missing values in each column
 col.missing <- colSums(is.na(secom))
 missing.cols <- names(which(col.missing > 0))
 num.missing.cols <- col.missing[missing.cols]
 percent.missing.cols <- round(num.missing.cols / nrow(secom) * 100, 2)
 
-# Create a table of missing values by column
+# 2.2 Create a table of missing values by column
 missing_data_cols <- data.frame(column = missing.cols, 
                                 missing_values = num.missing.cols, 
                                 percent_missing = percent.missing.cols)
 missing_table_cols <- missing_data_cols[order(missing_data_cols$missing_values, decreasing = TRUE), ]
 print(head(missing_table_cols,200))
 
-# Create a histogram of percentages of missing values
+# 2.3 Create a histogram of percentages of missing values
 library(ggplot2)
-ggplot(data = data.frame(percent_missing_cols), aes(x = percent_missing_cols)) +
+hist_missing_values <- 
+  ggplot(data = data.frame(percent_missing_cols), aes(x = percent_missing_cols)) +
   geom_histogram(binwidth = 1, 
                  color = "black", 
                  fill = "navyblue", 
@@ -122,6 +123,7 @@ ggplot(data = data.frame(percent_missing_cols), aes(x = percent_missing_cols)) +
   labs(title = "Histogram of Percentages of Missing Values per Column", 
        x = "% Missing Values", 
        y = "Count")
+print(hist_missing_values)
 
 # -----------------------------------------------------------------------------
 
@@ -133,12 +135,12 @@ ggplot(data = data.frame(percent_missing_cols), aes(x = percent_missing_cols)) +
 
 # 4.1 Check for variables with constant values 
 # Reason: if one variable has constant values (variance = 0) then the correlation coefficient will be 0
-data.hist %>%
+data_hist %>%
   filter(variance == 0) %>%
   count()
 # 116 features with a variance of zero
 # Create character vector of features with a variance of 0
-feature_var_0 <- data.hist %>%
+feature_var_0 <- data_hist %>%
   filter(variance == 0) %>%
   select(feature) %>% 
   pull(feature)
