@@ -100,15 +100,15 @@ data_hist %>%
 
 # 2 Missing values
 # Check for missing values in each column
-col_missing <- colSums(is.na(secom))
-missing_cols <- names(which(col_missing > 0))
-num_missing_cols <- col_missing[missing_cols]
-percent_missing_cols <- round(num_missing_cols / nrow(secom) * 100, 2)
+col.missing <- colSums(is.na(secom))
+missing.cols <- names(which(col.missing > 0))
+num.missing.cols <- col.missing[missing.cols]
+percent.missing.cols <- round(num.missing.cols / nrow(secom) * 100, 2)
 
 # Create a table of missing values by column
-missing_data_cols <- data.frame(column = missing_cols, 
-                                missing_values = num_missing_cols, 
-                                percent_missing = percent_missing_cols)
+missing_data_cols <- data.frame(column = missing.cols, 
+                                missing_values = num.missing.cols, 
+                                percent_missing = percent.missing.cols)
 missing_table_cols <- missing_data_cols[order(missing_data_cols$missing_values, decreasing = TRUE), ]
 print(head(missing_table_cols,200))
 
