@@ -128,6 +128,21 @@ print(hist_missing_values)
 # -----------------------------------------------------------------------------
 
 # 3 Frequency distribution of target values
+# 3.1 Isolate the target variable 'label' to create a frequency table of target variable
+
+target_freq_table <- data.frame(label = names(table(secom$label)), frequency = as.vector(table(secom$label)))
+target_freq_table$label <- ifelse(target_freq_table$label == -1, "Pass", "Fail")
+
+# 3.2 Create a bar chart of the frequency distribution of target variable
+bar_target_freq <- 
+ggplot(target_freq_table, aes(x = label, y = frequency, fill = label)) +
+  geom_bar(stat = "identity")  +
+  xlab("Label") +
+  ylab("Frequency") +
+  ggtitle("Frequency Distribution of Target Variable") +
+  theme_bw() +
+  scale_fill_manual(values = c("navyblue", "navyblue"))
+print(bar_target_freq)
 
 # -----------------------------------------------------------------------------
 # 4 Correlation matrix
