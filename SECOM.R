@@ -1,10 +1,8 @@
-# I Install/Load required packages
+# I Install/Load required packages --------------------------------------------
 if (!require("pacman")) install.packages("pacman")
-pacman::p_load(tidyverse, rlang, Hmisc, lubridate, corrplot)
+pacman::p_load(tidyverse, rlang, Hmisc, lubridate, corrplot, janitor)
 
-# -----------------------------------------------------------------------------
-
-# II Check/Set working directory
+# II Check/Set working directory ----------------------------------------------
 getwd()
 
 # Set working directory to your desktop
@@ -12,9 +10,8 @@ getwd()
 setwd("C:/Users/SimonaPaskaleva/Desktop")
 # Make sure to download the data files to your desktop
 
-# -----------------------------------------------------------------------------
+# III Load data into R --------------------------------------------------------
 
-# III Load data into R
 # 1 SECOM dataset
 # Use underscores for functions and datasets and points for variables
 # Separator/delimiter is a space, decimal separator is a point
@@ -57,10 +54,9 @@ secom <- secom_merged %>%
 tibble(secom)
 View(secom)
 
-# ----------------------------------------------------------------------------- 
+# IV Descriptive analysis------------------------------------------------------ 
 
-# IV Descriptive analysis
-# 1 Calculate variance of each feature
+# 1 Calculate variance of each feature ----------------------------------------
 # Function to calculate the variance of a single feature
 feature_var <- function(x) {
   value.var <- var(x, na.rm = TRUE)
@@ -70,92 +66,129 @@ feature_var(secom$feature10)
 
 # Function to calculate the variance of all features
 feature_var_all <- function(x) {
-  column1 <- colnames(secom[3:592])
+  column1 <- colnames(x)
   value_var_all <- data_frame(column1, apply(x, 2, var, na.rm = T)) %>%
     rename(feature = 1, variance = 2)
   return(value_var_all)
 }
-# Select only the feature columns 3:592
-data_hist <- data_frame(feature_var_all(secom[3:592]))
+feature_var_all(secom)
+# Select only the feature columns 
+data_hist_var <- data_frame(feature_var_all(secom[,!names(secom) %in% c("label","date")]))
 
 # Create histogram of variances/volatility
-hist_var <- data_hist %>%
+hist_var <- data_hist_var %>%
   ggplot(aes(variance))+
   geom_histogram(col = "black",
                  fill = "navyblue",
                  alpha = 0.7)+
   labs(title="Histogram of Feature Volatility",
        x = "Feature Variance",
-       y = "Frequency")
+       y = "Frequency")+
+  theme_bw()
 print(hist_var)
 
 # Majority of features have relatively low volatility
 # Check number of features with variance of zero
-data_hist %>%
+data_hist_var %>%
   filter(variance == 0) %>%
   count()
-# 116 features with variance of zero
+# 116 features with variance of 0
 
-# -----------------------------------------------------------------------------
-
-# 2 Missing values
+# 2 Missing values ------------------------------------------------------------
 # 2.1 Check for missing values in each column
-col.missing <- colSums(is.na(secom))
-missing.cols <- names(which(col.missing > 0))
-num.missing.cols <- col.missing[missing.cols]
-percent.missing.cols <- round(num.missing.cols / nrow(secom) * 100, 2)
+missing_cols <- function(x) {
+  cols_missing <- data_frame(column = colnames(x),
+                             missing_values = colSums(is.na(x)),
+                             percent_missing = round((missing_values / nrow(x))*100,2)) %>%
+    filter(missing_values > 0) %>%
+    arrange(desc(percent_missing)) %>%
+    print()
+}
+missing_cols(secom)
+# 538 features with missing values
 
-# 2.2 Create a table of missing values by column
-missing_data_cols <- data.frame(column = missing.cols, 
-                                missing_values = num.missing.cols, 
-                                percent_missing = percent.missing.cols)
-missing_table_cols <- missing_data_cols[order(missing_data_cols$missing_values, decreasing = TRUE), ]
-print(head(missing_table_cols,200))
+missing_cols(secom) %>%
+  filter(percent_missing > 50) %>%
+  nrow()
+# 28 features with over 50% missing values
 
-# 2.3 Create a histogram of percentages of missing values
-library(ggplot2)
-hist_missing_values <- 
-  ggplot(data = data.frame(percent_missing_cols), aes(x = percent_missing_cols)) +
+# 2.2 Check for missing values in each row
+missing_rows <- function(x) {
+  row_missing <- data_frame(row_id = seq.int(nrow(x)),
+                            missing_values = rowSums(is.na(x)),
+                            percent_missing = round((missing_values/length(x))*100,2)) %>%
+    print()
+}
+missing_rows(secom) %>%
+  filter(percent_missing <= 10) %>%
+  nrow()
+# There are no complete rows
+
+# 2.3 Create a histogram of percentages of missing values in columns
+hist.missing.cols <- 
+  ggplot(missing_cols(secom), aes(percent_missing)) +
   geom_histogram(binwidth = 1, 
                  color = "black", 
                  fill = "navyblue", 
                  alpha = 0.7) +
   labs(title = "Histogram of Percentages of Missing Values per Column", 
        x = "% Missing Values", 
-       y = "Count")
-print(hist_missing_values)
+       y = "Count") +
+  theme_bw()
+print(hist.missing.cols)
 
-# -----------------------------------------------------------------------------
+# 2.4 Create a histogram of percentages of missing values in rows
+hist.missing.rows <- 
+  ggplot(missing_rows(secom), aes(percent_missing)) +
+  geom_histogram(binwidth = 1, 
+                 color = "black", 
+                 fill = "navyblue", 
+                 alpha = 0.7) +
+  labs(title = "Histogram of Percentages of Missing Values per Row", 
+       x = "% Missing Values", 
+       y = "Count") +
+  theme_bw()
+print(hist.missing.rows)
 
-# 3 Frequency distribution of target values
+# 3 Frequency distribution of target values -----------------------------------
 # 3.1 Isolate the target variable 'label' to create a frequency table of target variable
-
-target_freq_table <- data.frame(label = names(table(secom$label)), frequency = as.vector(table(secom$label)))
-target_freq_table$label <- ifelse(target_freq_table$label == -1, "Pass", "Fail")
+target_freq <- function(x, col1) {
+  col1 <- enquo(col1)
+  target_freq_table <- x %>%
+    select(!!col1) %>%
+    group_by(x[1]) %>%
+    mutate(frequency = n(),
+           percentage = (frequency/nrow(x))*100,
+           label = ifelse(!!col1 == -1 , "Pass", "Fail")) %>%
+    distinct()
+  as_tibble(target_freq_table)
+}
+target_freq(secom, label)
 
 # 3.2 Create a bar chart of the frequency distribution of target variable
-bar_target_freq <- 
-ggplot(target_freq_table, aes(x = label, y = frequency, fill = label)) +
-  geom_bar(stat = "identity")  +
-  xlab("Label") +
-  ylab("Frequency") +
-  ggtitle("Frequency Distribution of Target Variable") +
+bar.target.freq <- 
+ggplot(target_freq(secom, label), aes(x = label, y = frequency, fill = label))+
+  geom_bar(stat = "identity", 
+           color = "black",
+           alpha = 0.7)+
+  labs(title = "Frequency Distribution of Target Variable",
+       x = "Label",
+       y = "Frequency")+
   theme_bw() +
-  scale_fill_manual(values = c("navyblue", "navyblue"))
-print(bar_target_freq)
+  scale_fill_manual(values = c("darkred", "darkgreen"))
+print(bar.target.freq)
 
-# -----------------------------------------------------------------------------
-# 4 Correlation matrix
+# 4 Correlation matrix --------------------------------------------------------
 # Calculate correlations of all features as a matrix of the type 590:590
 
 # 4.1 Check for variables with constant values 
 # Reason: if one variable has constant values (variance = 0) then the correlation coefficient will be 0
-data_hist %>%
+data_hist_var %>%
   filter(variance == 0) %>%
   count()
 # 116 features with a variance of zero
 # Create character vector of features with a variance of 0
-feature_var_0 <- data_hist %>%
+feature_var_0 <- data_hist_var %>%
   filter(variance == 0) %>%
   select(feature) %>% 
   pull(feature)
@@ -232,8 +265,75 @@ feature_corr_all <- function(x, p = 0.05) {
 
 feature_corr_all(feature_corr2[3:448])
 
-# V Split data into training and test set
+# 5 Duplicates ----------------------------------------------------------------
+# 5.1 Duplicate columns
+secom[duplicated(as.list(secom))]
+# 104 duplicate features with values of 0
 
-# VI Descriptive analysis of training data
+# 5.2 Duplicate rows
+
+
+
+# V Split data into training and test set -------------------------------------
+# Make it reproducible
+set.seed(42)
+
+# Create an id
+secom$id <- seq.int(nrow(secom))
+secom
+# 80:20 train to test split
+train_set <- secom %>%
+  group_by(label) %>%
+  mutate(num_rows = n()) %>%
+  sample_frac(size = 0.8, 
+              replace = FALSE,
+              weight = num_rows) %>%
+  ungroup()
+test_set <- anti_join(secom, train_set, by = "id")
+
+# Remove unnecessary id column
+secom <- secom[,!names(secom) %in% c("id")]
+tibble(secom)
+
+train_set <- train_set[,!names(train_set) %in% c("id","num_rows")]
+tibble(train_set)
+
+test_set <- test_set[,!names(test_set) %in% c("id","num_rows")]
+tibble(test_set)
+# Verify that distribution of target variable is the same in both sets
+target_freq(secom,label)
+# Data: 93.4 % pass cases and 6.64 fail cases
+target_freq(train_set,label)
+# Train set: 93.4% pass cases and 6.64% fail cases
+target_freq(test_set, label)
+# Test set: 93.3% pass cases and 6.69% fail cases
+
+bar.target.freq.test <- 
+  ggplot(target_freq(train_set, label), aes(x = label, y = frequency, fill = label))+
+  geom_bar(stat = "identity", 
+           color = "black",
+           alpha = 0.7)+
+  labs(title = "Frequency Distribution of Target Variable",
+       x = "Label",
+       y = "Frequency")+
+  theme_bw() +
+  scale_fill_manual(values = c("darkred", "darkgreen"))
+print(bar.target.freq.test)
+
+# VI Descriptive analysis of training data ------------------------------------
 # 1 Identify duplicates
+# 1.1 Duplicate rows 
+dup_rows <- subset(train_set,duplicated(train_set))
+# 0 duplicate rows
+
+#1.2 Duplicate columns
+dup_cols <- train_set[duplicated(as.list(train_set))]
+# 104 duplicated columns with values of 0
+View(dup_cols)
+  
 # 2 Identify missing values
+# 2.1 Missing values in columns
+missing_cols(train_set)
+
+# 2.2 Missing values in rows
+missing_rows(train_set)
