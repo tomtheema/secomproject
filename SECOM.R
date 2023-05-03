@@ -56,7 +56,8 @@ View(secom)
 
 # IV Descriptive analysis------------------------------------------------------ 
 
-# 1 Calculate variance of each feature ----------------------------------------
+# 1 Calculate volatility of each feature ----------------------------------------
+# 1.1 Calculate variance
 # Function to calculate the variance of a single feature
 feature_var <- function(x) {
   value.var <- var(x, na.rm = TRUE)
@@ -75,8 +76,8 @@ feature_var_all(secom)
 # Select only the feature columns 
 data_hist_var <- data_frame(feature_var_all(secom[,!names(secom) %in% c("label","date")]))
 
-# Create histogram of variances/volatility
-hist_var <- data_hist_var %>%
+# Create histogram of volatility
+hist.var <- data_hist_var %>%
   ggplot(aes(variance))+
   geom_histogram(col = "black",
                  fill = "navyblue",
@@ -85,7 +86,7 @@ hist_var <- data_hist_var %>%
        x = "Feature Variance",
        y = "Frequency")+
   theme_bw()
-print(hist_var)
+print(hist.var)
 
 # Majority of features have relatively low volatility
 # Check number of features with variance of zero
@@ -93,6 +94,47 @@ data_hist_var %>%
   filter(variance == 0) %>%
   count()
 # 116 features with variance of 0
+
+# 1.2 Calculate coefficient of variance
+# Function to calculate the coefficient
+CV <- function(x) {
+  (sd(x, na.rm = T)/mean(x, na.rm = T))*100 
+}
+# Apllying the CV function to the whole dataset
+feature_cv_all <- function(x) {
+  column1 <- colnames(x)
+  value_coef_var <- data_frame(column1, apply(x, 2, CV)) %>%
+    rename(feature = 1, coef_var = 2)
+  return(value_coef_var)
+}
+data_hist_cv <- feature_cv_all(secom[,!names(secom) %in% c("label","date")])
+
+# Histogram of the coefficients of variance
+hist.cv <- data_hist_cv %>%
+  ggplot(aes(coef_var))+
+  geom_histogram(col = "black",
+                 fill = "navyblue",
+                 alpha = 0.7)+
+  labs(title="Histogram of Feature Volatility",
+       x = "Coefficient of variance",
+       y = "Frequency")+
+  theme_bw()
+print(hist.cv)
+summary(data_hist_cv)
+
+# Zoom in
+hist.cv.zoom <- data_hist_cv %>%
+  filter(coef_var > -quantile(data_hist_cv$coef_var, 0.75, na.rm = T) &
+           coef_var < quantile(data_hist_cv$coef_var, 0.75, na.rm = T)) %>%
+  ggplot(aes(coef_var))+
+  geom_histogram(col = "black",
+                 fill = "navyblue",
+                 alpha = 0.7)+
+  labs(title="Histogram of Feature Volatility",
+       x = "Coefficient of variance",
+       y = "Frequency")+
+  theme_bw()
+print(hist.cv.zoom)
 
 # 2 Missing values ------------------------------------------------------------
 # 2.1 Check for missing values in each column
@@ -119,10 +161,13 @@ missing_rows <- function(x) {
                             percent_missing = round((missing_values/length(x))*100,2)) %>%
     print()
 }
+missing_rows(secom)
+# There are no complete rows
+
 missing_rows(secom) %>%
   filter(percent_missing <= 10) %>%
   nrow()
-# There are no complete rows
+# 1533 rows have <= 10% missing values
 
 # 2.3 Create a histogram of percentages of missing values in columns
 hist.missing.cols <- 
@@ -181,11 +226,9 @@ print(bar.target.freq)
 # 4 Correlation matrix --------------------------------------------------------
 # Calculate correlations of all features as a matrix of the type 590:590
 
+# 4.1 and 4.2 NOT NEEDED as of yet
 # 4.1 Check for variables with constant values 
 # Reason: if one variable has constant values (variance = 0) then the correlation coefficient will be 0
-data_hist_var %>%
-  filter(variance == 0) %>%
-  count()
 # 116 features with a variance of zero
 # Create character vector of features with a variance of 0
 feature_var_0 <- data_hist_var %>%
@@ -203,9 +246,8 @@ feature_corr <- secom %>%
 colnames(feature_corr)
 
 # 4.2 Remove features with over 50% missing values
-# Reason: 
 # Create character vector of features to exclude
-feature_miss_50 <- missing_table_cols %>%
+feature_miss_50 <- missing_cols(secom) %>%
   filter(percent_missing >= 50) %>%
   select(column) %>%
   pull(column)
@@ -217,8 +259,9 @@ feature_corr2 <- feature_corr %>%
 # Verify that the specified features (e.g. feature158) have been removed
 colnames(feature_corr2)
 
-# WIP!!! 4.3 Calculate correlation coefficients and exclude correlations under the treshhold of 0.05
-feature_corr_all <- function(x, p = 0.05) {
+# 4.3 Calculate correlation coefficients 
+# To exclude features with variance = 0 and missing values > 50% use feature_corr2
+feature_corr_all <- function(x) {
   corr_mat <- rcorr(as.matrix(x))
   # Extract correlation coefficients
   df_r <- corr_mat$r %>%
@@ -239,39 +282,88 @@ feature_corr_all <- function(x, p = 0.05) {
     left_join(df_p) 
   
   # Remove the NA values (removes perfect correlation of feature with itself)
-  df_merge <- na.omit(df_merge) 
+  df_merge <- na.omit(df_merge)
   
   # Select significant correlation coefficients
-  corr_mat_sig <- subset(df_merge, p.val < p) 
-  corr_mat_sign_n <- corr_mat_sig %>%
-    nrow() %>%
-    print()
-  # 38980 significant correlation coefficients
+  p = 0.05
+  corr_mat_sig <- subset(df_merge, p.val < p)
+  corr_mat_sig_n <- corr_mat_sig %>%
+    nrow()
+  # 38980 significant correlation coefficients of features, including variance = 0
+  # and missing values > 50%
+  # 42632 significant correlation coefficients of all features
   
   # Number of perfect correlations
   corr_mat_per_n <- corr_mat_sig %>%
     filter(corr == 1 | corr == -1) %>%
     nrow()
-  # 14 perfect correlation coefficients of 1/-1 between different features
+  # 14 perfect correlation coefficients between different features including variance = 0
+  # and missing values > 50%
+  # 30 perfect correlation coefficients of all features
   
   # Filter for strong correlations
-  corr_mat2 <- corr_mat_sig %>%
+  corr_mat_str_n <- corr_mat_sig %>%
     select(-p.val) %>%
-    filter(corr >= 0.8 | corr <= -0.8)
+    filter(corr >= 0.8 | corr <= -0.8) %>%
+    nrow()
+  # 1190 strong correlation coefficients between different features including variance = 0
+  # and missing values > 50%
+  # 2292 strong correlation coefficients of all features
   
-  corr_mat2 <- reshape2::acast(corr_mat2, features1~features2, value.var="corr")
-  feature_correlogram <- corrplot(corr_mat2, tl.cex = 0.01)
+  # Reshape dataframe into matrix
+  # Matrix not useful at this time
+  # corr_mat2 <- reshape2::acast(corr_mat2, features1~features2, value.var="corr")
+  # feature_correlogram <- corrplot(corr_mat2, tl.cex = 0.01)
+  
+  # Calculate correlation coefficients
+  corr_coef_pos <- corr_mat_sig %>%
+    filter(corr >= 0) %>%
+    arrange(corr) %>%
+    mutate(row_id = row_number())
+  corr_pos_graph <- ggplot(corr_coef_pos,aes(x = row_id, y = corr)) +
+    geom_line(size = 1,
+              color = "navyblue",
+              alpha = 0.7) +
+    labs(title = "Positive Correlation coefficients per Feature Pair",
+         x = "Feature Pairs",
+         y = "Correlation coefficient") +
+    theme_bw()
+  print(corr_pos_graph)
+  
+  corr_coef_neg <- corr_mat_sig %>%
+    filter(corr <= 0) %>%
+    arrange(desc(corr)) %>%
+    mutate(row_id = row_number())
+  corr_neg_graph <- ggplot(corr_coef_neg,aes(x = row_id, y = corr)) +
+    geom_line(size = 1,
+              color = "navyblue",
+              alpha = 0.7) +
+    labs(title = "Negative Correlation coefficients per Feature Pair",
+         x = "Feature Pairs",
+         y = "Correlation coefficient") +
+    theme_bw()
+  print(corr_neg_graph)
+  return_list <- list(signifcant = corr_mat_sig_n, perfect = corr_mat_per_n, strong = corr_mat_str_n)
+  return(return_list)
 }
-
-feature_corr_all(feature_corr2[3:448])
+feature_corr_all(secom[3:592])
 
 # 5 Duplicates ----------------------------------------------------------------
 # 5.1 Duplicate columns
-secom[duplicated(as.list(secom))]
+dup_cols_main <- secom[duplicated(as.list(secom))]
+dup_cols_main
 # 104 duplicate features with values of 0
 
 # 5.2 Duplicate rows
+dup_rows_main <- subset(secom,duplicated(secom))
+dup_rows_main
 
+# 6 Negative values -----------------------------------------------------------
+neg_val <- secom %>%
+  select(-c("label")) %>%
+  keep(~any(.x<0 & !is.na(.x)))
+tibble(neg_val)
+# 36 features have negative values
 
 
 # V Split data into training and test set -------------------------------------
