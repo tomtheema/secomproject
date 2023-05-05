@@ -52,7 +52,6 @@ tibble(secom_merged)
 secom <- secom_merged %>%
   mutate(date = dmy_hms(date))
 tibble(secom)
-View(secom)
 
 # IV Descriptive analysis------------------------------------------------------ 
 
@@ -139,7 +138,7 @@ print(hist.cv.zoom)
 # 2 Missing values ------------------------------------------------------------
 # 2.1 Check for missing values in each column
 missing_cols <- function(x) {
-  cols_missing <- data_frame(column = colnames(x),
+  cols_missing <- data_frame(feature = colnames(x),
                              missing_values = colSums(is.na(x)),
                              percent_missing = round((missing_values / nrow(x))*100,2)) %>%
     filter(missing_values > 0) %>%
@@ -231,33 +230,33 @@ print(bar.target.freq)
 # Reason: if one variable has constant values (variance = 0) then the correlation coefficient will be 0
 # 116 features with a variance of zero
 # Create character vector of features with a variance of 0
-feature_var_0 <- data_hist_var %>%
-  filter(variance == 0) %>%
-  select(feature) %>% 
-  pull(feature)
+# feature_var_0 <- data_hist_var %>%
+#  filter(variance == 0) %>%
+#  select(feature) %>% 
+#  pull(feature)
 # pull() extracts the filtered values into a character vector
 # Check the class to verify that it is a character vector
-class(feature_var_0)
+# class(feature_var_0)
 
 # Remove features with a variance of 0
-feature_corr <- secom %>%
-  select(-all_of(feature_var_0))
+# feature_corr <- secom %>%
+#  select(-all_of(feature_var_0))
 # Verify that the specified features (e.g. feature6) have been removed
-colnames(feature_corr)
+# colnames(feature_corr)
 
 # 4.2 Remove features with over 50% missing values
 # Create character vector of features to exclude
-feature_miss_50 <- missing_cols(secom) %>%
-  filter(percent_missing >= 50) %>%
-  select(column) %>%
-  pull(column)
+# feature_miss_50 <- missing_cols(secom) %>%
+#  filter(percent_missing >= 50) %>%
+#  select(column) %>%
+#  pull(column)
 
 # Remove features with over 50% missing values
-feature_corr2 <- feature_corr %>%
-  select(-all_of(feature_miss_50))
+#feature_corr2 <- feature_corr %>%
+#  select(-all_of(feature_miss_50))
 
 # Verify that the specified features (e.g. feature158) have been removed
-colnames(feature_corr2)
+#colnames(feature_corr2)
 
 # 4.3 Calculate correlation coefficients 
 # To exclude features with variance = 0 and missing values > 50% use feature_corr2
@@ -320,12 +319,12 @@ feature_corr_all <- function(x) {
     filter(corr >= 0) %>%
     arrange(corr) %>%
     mutate(row_id = row_number())
-  corr_pos_graph <- ggplot(corr_coef_pos,aes(x = row_id, y = corr)) +
+  corr_pos_graph <- ggplot(corr_coef_pos,aes(x = (row_id/nrow(corr_coef_pos))*100, y = corr)) +
     geom_line(size = 1,
               color = "navyblue",
-              alpha = 0.7) +
+              alpha = 0.7)+
     labs(title = "Positive Correlation coefficients per Feature Pair",
-         x = "Feature Pairs",
+         x = "% of Feature Pairs",
          y = "Correlation coefficient") +
     theme_bw()
   print(corr_pos_graph)
@@ -334,12 +333,12 @@ feature_corr_all <- function(x) {
     filter(corr <= 0) %>%
     arrange(desc(corr)) %>%
     mutate(row_id = row_number())
-  corr_neg_graph <- ggplot(corr_coef_neg,aes(x = row_id, y = corr)) +
+  corr_neg_graph <- ggplot(corr_coef_neg,aes(x = (row_id/nrow(corr_coef_neg))*100, y = corr)) +
     geom_line(size = 1,
               color = "navyblue",
               alpha = 0.7) +
     labs(title = "Negative Correlation coefficients per Feature Pair",
-         x = "Feature Pairs",
+         x = "% of Feature Pairs",
          y = "Correlation coefficient") +
     theme_bw()
   print(corr_neg_graph)
@@ -400,7 +399,7 @@ target_freq(train_set,label)
 target_freq(test_set, label)
 # Test set: 93.3% pass cases and 6.69% fail cases
 
-bar.target.freq.test <- 
+bar.target.freq.train <- 
   ggplot(target_freq(train_set, label), aes(x = label, y = frequency, fill = label))+
   geom_bar(stat = "identity", 
            color = "black",
@@ -410,7 +409,7 @@ bar.target.freq.test <-
        y = "Frequency")+
   theme_bw() +
   scale_fill_manual(values = c("darkred", "darkgreen"))
-print(bar.target.freq.test)
+print(bar.target.freq.train)
 
 # VI Descriptive analysis of training data ------------------------------------
 # 1 Identify duplicates
@@ -420,12 +419,45 @@ dup_rows <- subset(train_set,duplicated(train_set))
 
 #1.2 Duplicate columns
 dup_cols <- train_set[duplicated(as.list(train_set))]
-# 104 duplicated columns with values of 0
-View(dup_cols)
+# 104 duplicated columns
   
 # 2 Identify missing values
 # 2.1 Missing values in columns
-missing_cols(train_set)
+miss_col_train <- missing_cols(train_set)
+
+# Define threshold
+# Check the variance and correlation of the 28 features with over 50% missing values
+miss_50_list <- miss_col_train %>%
+  filter(percent_missing >= 50) %>%
+  select(column) %>%
+  pull(column)
+
+miss_50_cv <- feature_cv_all(train_set[miss_50_list])
+miss_50_val <- miss_col_train %>%
+  filter(percent_missing >= 50)
+miss_50_var <- merge(miss_50_cv, miss_50_val, by = "feature")
+
+miss_50_var %>%
+  ggplot(aes(coef_var))+
+  geom_histogram(color = "black",
+                 fill = "navyblue",
+                 alpha = 0.7,
+                 binwidth = 30)+
+  labs(title = "Histogram of CV of features with missing values",
+       x = "Coefficient of variance",
+       y = "Frequency")+
+  theme_bw()
+
+# Check the correlation of the 28 features
+miss_50_cor <- train_set %>%
+  select(all_of(c(miss_50_list,"label")))
+
+corr_mat <- corrplot(cor(as.matrix(miss_50_cor), use ="pairwise.complete.obs"),
+         tl.cex = 0.5,
+         method = "circle",
+         diag = F, 
+         type = "lower")
+print(corr_mat)
 
 # 2.2 Missing values in rows
 missing_rows(train_set)
