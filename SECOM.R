@@ -431,3 +431,45 @@ neg_val <- train_set %>%
 tibble(neg_val)
 # 36 features have negative values
 
+# VI Outliers identification and handling --------------------------------------
+
+# Outlier identification -------------------------------------------------------
+# Function to identify outliers outside 4 standard deviation boundaries
+identify_outliers <- function(data) {
+  # Initialize an empty data frame to store results
+  outlier_counts <- data.frame(Variable = character(),
+                               Outlier_Count = numeric(),
+                               stringsAsFactors = FALSE)
+  
+  # Loop through each variable in the data frame
+  for (col in names(data)) {
+    # Calculate mean and standard deviation of the variable
+    var_mean <- mean(data[[col]], na.rm = TRUE)
+    var_sd <- sd(data[[col]], na.rm = TRUE)
+    
+    # Calculate the upper and lower boundaries for outliers
+    upper_bound <- var_mean + 4 * var_sd
+    lower_bound <- var_mean - 4 * var_sd
+    
+    # Count the number of outliers in the variable
+    num_outliers <- sum(data[[col]] > upper_bound | data[[col]] < lower_bound, na.rm = TRUE)
+    
+    # Add the variable and outlier count to the result data frame
+    outlier_counts <- rbind(outlier_counts, data.frame(Variable = col,
+                                                       Outlier_Count = num_outliers,
+                                                       stringsAsFactors = FALSE))
+  }
+  
+  # Filter the data frame to include only variables with outliers
+  outlier_counts <- subset(outlier_counts, Outlier_Count >= 1)
+  
+  # Return the data frame with outlier counts
+  return(outlier_counts)
+}
+
+
+# Apply identify_outliers function to the training set
+outlier_results <- identify_outliers(handled_train_set)
+print(outlier_results)
+dim(outlier_results)
+#There are 374 features that have outliers outside the 4S-boundaries
