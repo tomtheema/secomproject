@@ -1,6 +1,6 @@
 # I Install/Load required packages --------------------------------------------
 if (!require("pacman")) install.packages("pacman")
-pacman::p_load(tidyverse, rlang, Hmisc, lubridate, corrplot, janitor)
+pacman::p_load(tidyverse, rlang, Hmisc, lubridate, corrplot, VIM)
 
 # II Check/Set working directory ----------------------------------------------
 getwd()
@@ -132,23 +132,20 @@ feature_var_all <- function(x) {
   column1 <- colnames(x)
   value_var_all <- data_frame(column1, apply(x, 2, var, na.rm = T)) %>%
     rename(feature = 1, variance = 2)
+  hist.var <- value_var_all %>%
+    ggplot(aes(variance))+
+    geom_histogram(col = "black",
+                   fill = "navyblue",
+                   alpha = 0.7)+
+    labs(title="Histogram of Feature Volatility",
+         x = "Feature Variance",
+         y = "Frequency")+
+    theme_bw()
+  print(hist.var)
   return(value_var_all)
 }
-feature_var_all(train_set)
 # Select only the feature columns 
-data_hist_var <- data_frame(feature_var_all(train_set[,!names(train_set) %in% c("label","date")]))
-
-# Create histogram of volatility
-hist.var <- data_hist_var %>%
-  ggplot(aes(variance))+
-  geom_histogram(col = "black",
-                 fill = "navyblue",
-                 alpha = 0.7)+
-  labs(title="Histogram of Feature Volatility",
-       x = "Feature Variance",
-       y = "Frequency")+
-  theme_bw()
-print(hist.var)
+data_hist_var <- feature_var_all(train_set[,!names(train_set) %in% c("label","date")])
 
 # Majority of features have relatively low volatility
 # Check number of features with variance of zero
@@ -204,13 +201,14 @@ print(hist.cv.zoom)
 missing_cols <- function(x) {
   cols_missing <- data_frame(feature = colnames(x),
                              missing_values = colSums(is.na(x)),
-                             percent_missing = round((missing_values / nrow(x))*100,2)) %>%
+                             percent_missing = round((missing_values / nrow(x))*100,digits = 4)) %>%
     filter(missing_values > 0) %>%
     arrange(desc(percent_missing)) %>%
     print()
 }
 miss_col <- missing_cols(train_set)
-# 538 features with missing values
+sum(miss_col$missing_values)
+# 538 features with missing values and 33521 total missing values
 
 miss_col %>%
   filter(percent_missing > 50) %>%
@@ -225,9 +223,11 @@ miss_50_list <- miss_col %>%
   pull(feature)
 
 miss_50_cv <- feature_cv_all(train_set[miss_50_list])
-miss_50_val <- miss_col_train %>%
+miss_50_val <- miss_col %>%
   filter(percent_missing >= 50)
-miss_50_var <- merge(miss_50_cv, miss_50_val, by = "feature")
+miss_50_var <- merge(miss_50_cv, miss_50_val, by = "feature") %>%
+  arrange(desc(coef_var))
+# Set treshold to 65% missing values due to high variance 
 
 miss_50_var %>%
   ggplot(aes(coef_var))+
@@ -296,42 +296,7 @@ print(hist.missing.rows)
 
 
 # 3 Correlation analysis ------------------------------------------------------
-
-# 3.1 and 3.2 NOT NEEDED as of yet
-# 3.1 Check for variables with constant values 
-# Reason: if one variable has constant values (variance = 0) then the correlation coefficient will be 0
-# 116 features with a variance of zero
-# Create character vector of features with a variance of 0
-feature_var_0 <- data_hist_var %>%
-  filter(variance == 0) %>%
-  select(feature) %>% 
-  pull(feature)
-# pull() extracts the filtered values into a character vector
-# Check the class to verify that it is a character vector
-# class(feature_var_0)
-
-# Remove features with a variance of 0
- feature_corr <- train_set %>%
-  select(-all_of(feature_var_0))
-# Verify that the specified features (e.g. feature6) have been removed
-# colnames(feature_corr)
-
-# 3.2 Remove features with over 50% missing values
-# Create character vector of features to exclude
-feature_miss_50 <- missing_cols(train_set) %>%
-  filter(percent_missing >= 50) %>%
-  select(feature) %>%
-  pull(feature)
-
-# Remove features with over 50% missing values
-feature_corr2 <- feature_corr %>%
-  select(-all_of(feature_miss_50))
-
-# Verify that the specified features (e.g. feature158) have been removed
-colnames(feature_corr2)
-
-# 3.3 Calculate correlation coefficients 
-# To exclude features with variance = 0 and missing values > 50% use feature_corr2
+# Calculate correlation coefficients 
 feature_corr_all <- function(x) {
   corr_mat <- rcorr(as.matrix(x))
   # Extract correlation coefficients
@@ -372,7 +337,8 @@ feature_corr_all <- function(x) {
   # Calculate correlation coefficients
   corr_coef_pos <- corr_mat_sig %>%
     filter(corr >= 0) %>%
-    arrange(corr) %>%
+    arrange(corr)
+  corr_coef_pos <- corr_coef_pos %>% 
     mutate(row_id = row_number(),
            percentage = (row_id/nrow(corr_coef_pos))*100)
   
@@ -392,7 +358,8 @@ feature_corr_all <- function(x) {
   
   corr_coef_neg <- corr_mat_sig %>%
     filter(corr <= 0) %>%
-    arrange(desc(corr)) %>%
+    arrange(desc(corr))
+  corr_coef_neg <- corr_coef_neg %>%
     mutate(row_id = row_number(),
            percentage = (row_id/nrow(corr_coef_neg))*100)
   corr_neg_graph <- ggplot(corr_coef_neg,aes(x = percentage, y = corr)) +
@@ -408,10 +375,11 @@ feature_corr_all <- function(x) {
   return(return_list)
 }
 # Results for all features
-feature_corr_all(train_set[3:592])
+feature_corr_all(train_set[,!names(train_set) %in% c("label","date")])
 
-# Results after removal of features with variance of 0 and missing values > 50$
-feature_corr_all(feature_corr2[3:448])
+# Run VI Dimensionality reduction first
+# Results after removal of features with variance of 0 and missing values > 65%
+feature_corr_all(train_red[,!names(train_red) %in% c("label","date")])
 
 # 4 Duplicates ----------------------------------------------------------------
 # 4.1 Duplicate columns
@@ -431,14 +399,48 @@ neg_val <- train_set %>%
 tibble(neg_val)
 # 36 features have negative values
 
-# VI Outliers identification and handling --------------------------------------
+# VI Rough dimension reduction
+# 1 Based on variance
+# Create character vector of features with a variance of 0
+feature_var_0 <- data_hist_var %>%
+  filter(variance == 0) %>%
+  select(feature) %>% 
+  pull(feature)
+# pull() extracts the filtered values into a character vector
+# Check the class to verify that it is a character vector
+class(feature_var_0)
 
-# Outlier identification -------------------------------------------------------
+# Remove features with a variance of 0
+train_red_var <- train_set %>%
+  select(-all_of(feature_var_0))
+# Verify that the specified features (e.g. feature6) have been removed
+colnames(train_red_var)
+
+# 2 Based on missing values
+# Remove features with over 65% missing values
+# Create character vector of features to exclude
+feature_miss_65 <- missing_cols(train_red_var) %>%
+  filter(percent_missing >= 65) %>%
+  select(feature) %>%
+  pull(feature)
+
+# Remove features with over 65% missing values
+train_red <- train_red_var %>%
+  select(-all_of(feature_miss_65))
+
+# Verify that the specified features (e.g. feature158) have been removed
+colnames(train_red)
+
+# Overall dimensionality reduction of 131 features
+
+
+# VII Outliers identification and handling ------------------------------------
+# 1 Outlier identification ----------------------------------------------------
 # Function to identify outliers outside 4 standard deviation boundaries
-identify_outliers <- function(data) {
+identify_outliers <- function(data, handling) {
   # Initialize an empty data frame to store results
-  outlier_counts <- data.frame(Variable = character(),
-                               Outlier_Count = numeric(),
+  outlier_counts <- data.frame(variable = character(),
+                               outlier_count = numeric(),
                                stringsAsFactors = FALSE)
   
   # Loop through each variable in the data frame
@@ -455,21 +457,118 @@ identify_outliers <- function(data) {
     num_outliers <- sum(data[[col]] > upper_bound | data[[col]] < lower_bound, na.rm = TRUE)
     
     # Add the variable and outlier count to the result data frame
-    outlier_counts <- rbind(outlier_counts, data.frame(Variable = col,
-                                                       Outlier_Count = num_outliers,
+    outlier_counts <- rbind(outlier_counts, data.frame(variable = col,
+                                                       outlier_count = num_outliers,
                                                        stringsAsFactors = FALSE))
   }
   
   # Filter the data frame to include only variables with outliers
-  outlier_counts <- subset(outlier_counts, Outlier_Count >= 1)
-  
+  outlier_counts <- subset(outlier_counts, outlier_count >= 1)
+
   # Return the data frame with outlier counts
-  return(outlier_counts)
+  tibble(outlier_counts)
 }
 
-
 # Apply identify_outliers function to the training set
-outlier_results <- identify_outliers(handled_train_set)
-print(outlier_results)
-dim(outlier_results)
-#There are 374 features that have outliers outside the 4S-boundaries
+outlier_results <- identify_outliers(train_red[,!names(train_red) %in% c("label","date")])
+sum(outlier_results$outlier_count)
+#There are 368 features that have outliers outside the 4S-boundaries and a total of 2597 outlier values
+
+# 2 Outlier handling ---------------------------------------------------------
+# FUnction to either replace outliers with 4S boundary or with NAs
+outlier_replace <- function(x, method = c("NA","SD")) {
+  # Partial string matching of input for method
+  method <- match.arg(method)
+  # Calculate mean and standard deviation
+  mu = mean(x, na.rm = TRUE)
+  s = sd(x, na.rm = TRUE)
+  # Calculate lower and upper 4s boundary
+  upper = mu + 4*s
+  lower = mu - 4*s
+  is_upb <- x > upper 
+  is_lwb <- x < lower
+  # If-else statement for outlier handling, if no method is given it defaults to NA
+  if (method == "NA") {
+    x[is_upb | is_lwb] <- NA
+  } else {
+    x[is_upb] <- upper
+    x[is_lwb] <- lower
+  }
+  x
+}
+# Apply function to all numeric columns
+# 2.1 Set to NAs
+outlier_na <- train_red %>%
+  mutate(across(where(is.numeric),outlier_replace))
+# Check results based on NA method (24051 original NAs in train_red + 2597 outlier NAs)
+sum(is.na(outlier_na))
+# 26648 NAs
+
+# 2.2 Set to 4SD
+# Lamda method
+outlier_sd <- train_red %>%
+  mutate(across(where(is.numeric), ~ outlier_replace(.x, method = "SD")))
+# Specify function method
+outlier_sd <- train_red %>%
+  mutate(across(where(is.numeric), function(x) outlier_replace(x, method = "SD")))
+
+# VIII Missing value imputation -----------------------------------------------
+# 1 MICE method ---------------------------------------------------------------
+# Will not be implemented as computation takes >4h
+# mice_na <- mice(outlier_na, method = "sample", m = 5)
+# mice_sd <- mice(outlier_sd, method = "sample", m = 5)
+# 2 kNN method
+# 2.1 Scaling
+# Because kNN uses Euclidean distance, the features need to be on the same scale
+# Set seed to reproduce
+set.seed(1234)
+# Remove label and date, they don't need to be scaled
+scaled_na <- outlier_na[,!names(outlier_na) %in% c("label","date")] %>%
+  mutate(across(where(is.numeric), ~ scale(.x, center = T, scale = T)))
+scaled_sd <- outlier_sd[,!names(outlier_sd) %in% c("label","date")] %>%
+  mutate(across(where(is.numeric), ~ scale(.x, center = T, scale = T)))
+
+# 2.2 Imputation
+# Merge label and date back together with the rest of the data for the imputation
+knn_na <- kNN(bind_cols(outlier_na[,names(outlier_na) %in% c("label","date")],scaled_na), 
+              k = 5, impNA = T, imp_var = F)
+as_tibble(knn_na)
+# Check that imputation was successful
+sum(is.na(knn_na))
+
+# Merge label and date back together with the rest of the data for the imputation
+knn_sd <- kNN(bind_cols(outlier_sd[,names(outlier_na) %in% c("label","date")],scaled_sd), 
+              k = 5, impNA = T, imp_var = F)
+as_tibble(knn_sd)
+# Check that imputation was successful
+sum(is.na(knn_sd))
+
+# 2.3 Check quality of imputation
+# Reverse scaling to check the effects of imputation 
+# For NA set
+mu_na <- sapply(outlier_na[,!names(outlier_na) %in% c("label","date")], mean, na.rm = T)
+s_na <- sapply(outlier_na[,!names(outlier_na) %in% c("label","date")], sd, na.rm = T)
+train_imp_na <- (knn_na[,!names(outlier_na) %in% c("label","date")]*s_na)+mu_na
+as_tibble(bind_cols(knn_na[,names(outlier_na) %in% c("label","date")],train_imp_na))
+# Huge increase in variance by setting k = 5
+train_imp_na_var <- feature_var_all(train_imp_na)
+check_var <- feature_var_all(train_set)
+
+# For SD set
+mu_sd <- sapply(outlier_sd[,!names(outlier_sd) %in% c("label","date")], mean, na.rm = T)
+s_sd <- sapply(outlier_sd[,!names(outlier_sd) %in% c("label","date")], sd, na.rm = T)
+train_imp_sd <- (knn_sd[,!names(outlier_na) %in% c("label","date")]*s_sd)+mu_sd
+as_tibble(bind_cols(knn_sd[,names(outlier_na) %in% c("label","date")],train_imp_sd))
+
+# Increase in variance not that significant for k = 5 in comparison to _na set
+train_imp_sd_var <- feature_var_all(train_imp_sd)
+check_var <- feature_var_all(train_set)
+  
+# 3 ? method (TBD)
+
+
+
+# IX Feature selection/reduction
+# 1 Feature selection
+# 2 Feature reduction
+
