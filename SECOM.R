@@ -1,6 +1,6 @@
 # I Install/Load required packages --------------------------------------------
 if (!require("pacman")) install.packages("pacman")
-pacman::p_load(tidyverse, rlang, Hmisc, lubridate, corrplot, VIM)
+pacman::p_load(tidyverse, rlang, Hmisc, lubridate, corrplot, VIM, Amelia, Boruta)
 
 # II Check/Set working directory ----------------------------------------------
 getwd()
@@ -535,13 +535,15 @@ knn_na <- kNN(bind_cols(outlier_na[,names(outlier_na) %in% c("label","date")],sc
 as_tibble(knn_na)
 # Check that imputation was successful
 sum(is.na(knn_na))
-
+missmap(knn_na)
+                
 # Merge label and date back together with the rest of the data for the imputation
 knn_sd <- kNN(bind_cols(outlier_sd[,names(outlier_na) %in% c("label","date")],scaled_sd), 
               k = 5, impNA = T, imp_var = F)
 as_tibble(knn_sd)
 # Check that imputation was successful
 sum(is.na(knn_sd))
+missmap(knn_sd)
 
 # 2.3 Check quality of imputation
 # Reverse scaling to check the effects of imputation 
@@ -570,5 +572,59 @@ check_var <- feature_var_all(train_set)
 
 # IX Feature selection/reduction
 # 1 Feature selection
+
+# use Boruta algorithm on the imputed dataset
+set.seed(1234)
+
+# 1.1 Perform Boruta algorithm on imputed training data with label as target variable
+knn_na_boruta <- Boruta(
+  label~.,
+  data = knn_na,
+  pValue = 0.05,   # Set the p-value threshold to 0.05
+  maxRuns = 200,   # Set the maximum number of runs to 200
+  doTrace = 2      # Allows you to get a report of the progress of the process
+)
+print(knn_na_boruta)
+
+#take a call on tentative features
+knn_na_boruta_tent <- TentativeRoughFix(knn_na_boruta)
+print(knn_na_boruta_tent)
+
+# plot the boruta variable importance chart by calling:
+graphics.off() # if necessary to shut down all open graphics devices
+plot(knn_na_boruta_tent)
+
+# confirm the importance of the features
+getSelectedAttributes(knn_na_boruta_tent, withTentative = T)
+# there are 17 confirmed important features and the rest 444 features are rejected.
+knn_na_boruta_stats <- attStats(knn_na_boruta_tent)
+plot(normHits~meanImp,col=knn_na_boruta_stats$decision,data=knn_na_boruta_stats)
+print(knn_na_boruta_stats)
+                
+# 1.2 Perform Boruta algorithm on imputed training data with label as target variable
+knn_sd_boruta <- Boruta(
+  label~.,
+  data = knn_sd,
+  pValue = 0.05,   # Set the p-value threshold to 0.05
+  maxRuns = 200,   # Set the maximum number of runs to 200
+  doTrace = 2      # Allows you to get a report of the progress of the process
+)
+print(knn_sd_boruta)
+#take a call on tentative features
+knn_sd_boruta_tent <- TentativeRoughFix(knn_sd_boruta)
+print(knn_sd_boruta_tent)
+
+# plot the boruta variable importance chart by calling:
+graphics.off() # if necessary to shut down all open graphics devices
+plot(knn_sd_boruta_tent)
+
+# you can confirm the importance of the features by typing
+getSelectedAttributes(knn_sd_boruta_tent, withTentative = T)
+# there are  25 confirmed important features and the rest 436 features are rejected.
+knn_sd_boruta_stats <- attStats(knn_sd_boruta_tent)
+plot(normHits~meanImp,col=knn_sd_boruta_stats$decision,data=knn_sd_boruta_stats)
+print(knn_sd_boruta_stats)
+
+                
 # 2 Feature reduction
 
