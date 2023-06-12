@@ -1,6 +1,6 @@
 # I Install/Load required packages --------------------------------------------
 if (!require("pacman")) install.packages("pacman")
-pacman::p_load(tidyverse, rlang, Hmisc, lubridate, corrplot, VIM, Boruta, EFAtools, FactoMineR)
+pacman::p_load(tidyverse, rlang, Hmisc, lubridate, corrplot, VIM, Boruta, EFAtools, FactoMineR, ROSE, smotefamily)
 
 # II Check/Set working directory ----------------------------------------------
 getwd()
@@ -1007,3 +1007,224 @@ train_irmi_sd_kmo$KMO
 # KMO: 0.01
 # Not suitable for PCA
 
+
+# X Balancing
+
+# For this round, we will start with dataset 'hot_pca_na_k' as example dataset 
+# In order to try every single balancing method, and visualise the results from every method
+# Then we can choose the some of the most reasonable methods to perform with other datasets.
+
+# bind the target variable back with the data to prepare for balancing
+hot_pca_na_k <- as.data.frame(hot_pca_na_k$scores)
+hot_pca_na_k_bal <- bind_cols(select(hot_na, label = label), hot_pca_na_k)
+view(hot_pca_na_k_bal)
+
+# check frequency table of target variable
+table(hot_pca_na_k_bal$label)
+
+# check classes distribution
+prop.table(table(hot_pca_na_k_bal$label))
+
+# over sampling (majority*2 = 1170*2 = 2340)
+data_balanced_over <- ovun.sample(label~., data = hot_pca_na_k_bal, method = "over",N = 2340)$data
+table(data_balanced_over$label)
+
+# under sampling (minority*2 = 83*2 = 166)
+data_balanced_under <- ovun.sample(label~., data = hot_pca_na_k_bal, method = "under", N = 166, seed = 1)$data
+table(data_balanced_under$label)
+
+# both over and under sampling (total = 1170+83 = 1253)
+data_balanced_both <- ovun.sample(label~., data = hot_pca_na_k_bal, method = "both", p=0.5,N=1253, seed = 1)$data
+table(data_balanced_both$label)
+
+# ROSE
+# all arguments of ROSE have been set to the default values
+data_rose <- ROSE(label~., data = hot_pca_na_k_bal, seed = 1)$data
+table(data_rose$label)
+
+#parameters have been shrunk, by setting hmult.majo = 0.25 and hmult.mino = 0.5.
+data_rose_shrunk <- ROSE(label~., data = hot_pca_na_k_bal, seed = 1,hmult.majo = 0.25 , hmult.mino = 0.5)$data
+table(data_rose_shrunk$label)
+
+#SMOTE
+data_SMOTE <- SMOTE(X = hot_pca_na_k_bal[,-1], hot_pca_na_k_bal$label)$data
+table(data_SMOTE$class)
+
+#ADASYN
+data_ADASYN<-ADAS(X=hot_pca_na_k_bal[,-1], target=hot_pca_na_k_bal$label)$data
+table(data_ADASYN$class)
+
+
+# -------- Visualising results after balancing --------------
+
+par(mfrow=c(2,2))
+#plot train data
+plot(hot_pca_na_k_bal$RC1,hot_pca_na_k_bal$RC2,main="Training Data",
+     xlim=c(-5,5), ylim=c(-5,5), col = adjustcolor(ifelse(hot_pca_na_k_bal$label == -1, "blue", "red"), alpha.f = 0.5), pch=16,xlab="", ylab="")
+legend("topleft", c("Majority class", "Minority class"), pch = 16, col = c("blue", "red"))
+
+#plot oversampled data
+plot(data_balanced_over$RC1,data_balanced_over$RC2,main="Oversampling",
+     xlim=c(-5,5), ylim=c(-5,5), col = adjustcolor(ifelse(hot_pca_na_k_bal$label == -1, "blue", "red"), alpha.f = 0.5), pch=16,xlab="", ylab="")
+legend("topleft", c("Majority class", "Minority class"), pch = 16, col = c("blue", "red"))
+
+#plot undersampled data
+plot(data_balanced_under$RC1,data_balanced_under$RC2,main="Undersampling",
+     xlim=c(-5,5), ylim=c(-5,5), col = adjustcolor(ifelse(hot_pca_na_k_bal$label == -1, "blue", "red"), alpha.f = 0.5), pch=16,xlab="", ylab="")
+legend("topleft", c("Majority class", "Minority class"), pch = 16, col = c("blue", "red"))
+
+#plot over and undersampled data
+plot(data_balanced_both$RC1,data_balanced_both$RC2,main="Over- and Undersampling",
+     xlim=c(-5,5), ylim=c(-5,5), col = adjustcolor(ifelse(hot_pca_na_k_bal$label == -1, "blue", "red"), alpha.f = 0.5), pch=16,xlab="", ylab="")
+legend("topleft", c("Majority class", "Minority class"), pch = 16, col = c("blue", "red"))
+
+par(mfrow=c(2,2))
+#plot train data
+plot(hot_pca_na_k_bal$RC1,hot_pca_na_k_bal$RC2,main="Training Data",
+     xlim=c(-5,5), ylim=c(-5,5), col = adjustcolor(ifelse(hot_pca_na_k_bal$label == -1, "blue", "red"), alpha.f = 0.5), pch=16,xlab="", ylab="")
+legend("topleft", c("Majority class", "Minority class"), pch = 16, col = c("blue", "red"))
+
+#plot ROSE resampled data
+plot(data_rose$RC1,data_rose$RC2,main="ROSE resampling",
+     xlim=c(-5,5), ylim=c(-5,5), col = adjustcolor(ifelse(hot_pca_na_k_bal$label == -1, "blue", "red"), alpha.f = 0.5), pch=16,xlab="", ylab="")
+legend("topleft", c("Majority class", "Minority class"), pch = 16, col = c("blue", "red"))
+
+#plot ROSE shrunk resampled data
+plot(data_rose_shrunk$RC1,data_rose_shrunk$RC2,main="ROSE shrunk resampling",
+     xlim=c(-5,5), ylim=c(-5,5), col = adjustcolor(ifelse(hot_pca_na_k_bal$label == -1, "blue", "red"), alpha.f = 0.5), pch=16,xlab="", ylab="")
+legend("topleft", c("Majority class", "Minority class"), pch = 16, col = c("blue", "red"))
+
+#plot SMOTE resampled data
+plot(data_SMOTE$RC1,data_SMOTE$RC2,main="SMOTE resampling",
+     xlim=c(-5,5), ylim=c(-5,5), col = adjustcolor(ifelse(hot_pca_na_k_bal$label == -1, "blue", "red"), alpha.f = 0.5), pch=16,xlab="", ylab="")
+legend("topleft", c("Majority class", "Minority class"), pch = 16, col = c("blue", "red"))
+
+par(mfrow=c(2,2))
+#plot train data
+plot(hot_pca_na_k_bal$RC1,hot_pca_na_k_bal$RC2,main="Training Data",
+     xlim=c(-5,5), ylim=c(-5,5),col = adjustcolor(ifelse(hot_pca_na_k_bal$label == -1, "blue", "red"), alpha.f = 0.5), pch=16,xlab="", ylab="")
+legend("topleft", c("Majority class", "Minority class"), pch = 16, col = c("blue", "red"))
+
+#plot ROSE shrunk resampled data
+plot(data_rose_shrunk$RC1,data_rose_shrunk$RC2,main="ROSE shrunk resampling",
+     xlim=c(-5,5), ylim=c(-5,5), col = adjustcolor(ifelse(hot_pca_na_k_bal$label == -1, "blue", "red"), alpha.f = 0.5), pch=16,xlab="", ylab="")
+legend("topleft", c("Majority class", "Minority class"), pch = 16, col = c("blue", "red"))
+
+#plot SMOTE resampled data
+plot(data_SMOTE$RC1,data_SMOTE$RC2,main="SMOTE resampling",
+     xlim=c(-5,5), ylim=c(-5,5), col = adjustcolor(ifelse(hot_pca_na_k_bal$label == -1, "blue", "red"), alpha.f = 0.5), pch=16,xlab="", ylab="")
+legend("topleft", c("Majority class", "Minority class"), pch = 16, col = c("blue", "red"))
+
+#plot ADASYN resampled data
+plot(data_ADASYN$RC1,data_ADASYN$RC2,main="ADASYN resampling",
+     xlim=c(-5,5), ylim=c(-5,5), col = adjustcolor(ifelse(hot_pca_na_k_bal$label == -1, "blue", "red"), alpha.f = 0.5), pch=16,xlab="", ylab="")
+legend("topleft", c("Majority class", "Minority class"), pch = 16, col = c("blue", "red"))
+
+# From visualising the results after balancing method in the plots above 
+# It can seen that there are only 3 reasonable balancing methods
+# which are ROSE shrunk, SMOTE and ADASYN
+
+# Below, the 3 chosen balancing methods will be applied to all datasets.
+
+# 10.1 hot_pca_na_k
+# Prepare for balancing by binding the target variable back with the data
+
+hot_pca_na_k <- as.data.frame(hot_pca_na_k$scores)
+hot_pca_na_k_bal <- bind_cols(select(hot_na, label = label), hot_pca_na_k)
+
+#ROSE shrunk
+hot_pca_na_k_rose <- ROSE(label~., data = hot_pca_na_k_bal, seed = 1,hmult.majo = 0.25 , hmult.mino = 0.5)$data
+table(hot_pca_na_k_rose$label)
+
+#SMOTE
+hot_pca_na_k_SMOTE <- SMOTE(X = hot_pca_na_k_bal[,-1], hot_pca_na_k_bal$label)$data
+table(hot_pca_na_k_SMOTE$class)
+
+#ADASYN
+hot_pca_na_k_ADASYN<-ADAS(X=hot_pca_na_k_bal[,-1], target=hot_pca_na_k_bal$label)$data
+table(hot_pca_na_k_ADASYN$class)
+
+#10.2 hot_pca_sd_k
+# Prepare for balancing by binding the target variable back with the data
+hot_pca_sd_k <- as.data.frame(hot_pca_sd_k$scores)
+hot_pca_sd_k_bal <- bind_cols(select(hot_sd, label = label), hot_pca_sd_k)
+
+#ROSE shrunk
+hot_pca_sd_k_rose <- ROSE(label~., data = hot_pca_sd_k_bal, seed = 1,hmult.majo = 0.25 , hmult.mino = 0.5)$data
+table(hot_pca_sd_k_rose$label)
+
+#SMOTE
+hot_pca_sd_k_SMOTE <- SMOTE(X = hot_pca_sd_k_bal[,-1], hot_pca_sd_k_bal$label)$data
+table(hot_pca_sd_k_SMOTE$class)
+
+#ADASYN
+hot_pca_sd_k_ADASYN<-ADAS(X=hot_pca_sd_k_bal[,-1], target=hot_pca_sd_k_bal$label)$data
+table(hot_pca_sd_k_ADASYN$class)
+
+#10.3 hot_pca_outlier_k
+# Prepare for balancing by binding the target variable back with the data
+hot_pca_outlier_k <- as.data.frame(hot_pca_outlier_k$scores)
+hot_pca_outlier_k_bal <- bind_cols(select(train_hot_outlier, label = label), hot_pca_outlier_k)
+
+#ROSE shrunk
+hot_pca_outlier_k_rose <- ROSE(label~., data = hot_pca_outlier_k_bal, seed = 1,hmult.majo = 0.25 , hmult.mino = 0.5)$data
+table(hot_pca_outlier_k_rose$label)
+
+#SMOTE
+hot_pca_outlier_k_SMOTE <- SMOTE(X = hot_pca_outlier_k_bal[,-1], hot_pca_outlier_k_bal$label)$data
+table(hot_pca_outlier_k_SMOTE$class)
+
+#ADASYN
+hot_pca_outlier_k_ADASYN<-ADAS(X=hot_pca_outlier_k_bal[,-1], target=hot_pca_outlier_k_bal$label)$data
+table(hot_pca_outlier_k_ADASYN$class)
+
+#10.4 hot_pca_na_var
+# Prepare for balancing by binding the target variable back with the data
+hot_pca_na_var <- as.data.frame(hot_pca_na_var$scores)
+hot_pca_na_var_bal <- bind_cols(select(hot_na, label = label), hot_pca_na_var)
+
+#ROSE shrunk
+hot_pca_na_var_rose <- ROSE(label~., data = hot_pca_na_var_bal, seed = 1,hmult.majo = 0.25 , hmult.mino = 0.5)$data
+table(hot_pca_na_var_rose$label)
+
+#SMOTE
+hot_pca_na_var_SMOTE <- SMOTE(X = hot_pca_na_var_bal[,-1], hot_pca_na_var_bal$label)$data
+table(hot_pca_na_var_SMOTE$class)
+
+#ADASYN
+hot_pca_na_var_ADASYN<-ADAS(X=hot_pca_na_var_bal[,-1], target=hot_pca_na_var_bal$label)$data
+table(hot_pca_na_var_ADASYN$class)
+
+#10.5 hot_pca_na_var
+# Prepare for balancing by binding the target variable back with the data
+hot_pca_sd_var <- as.data.frame(hot_pca_sd_var$scores)
+hot_pca_sd_var_bal <- bind_cols(select(hot_sd, label = label), hot_pca_sd_var)
+
+#ROSE shrunk
+hot_pca_sd_var_rose <- ROSE(label~., data = hot_pca_sd_var_bal, seed = 1,hmult.majo = 0.25 , hmult.mino = 0.5)$data
+table(hot_pca_sd_var_rose$label)
+
+#SMOTE
+hot_pca_sd_var_SMOTE <- SMOTE(X = hot_pca_sd_var_bal[,-1], hot_pca_sd_var_bal$label)$data
+table(hot_pca_sd_var_SMOTE$class)
+
+#ADASYN
+hot_pca_sd_var_ADASYN<-ADAS(X=hot_pca_sd_var_bal[,-1], target=hot_pca_sd_var_bal$label)$data
+table(hot_pca_sd_var_ADASYN$class)
+
+#10.6 hot_pca_outlier_var
+# Prepare for balancing by binding the target variable back with the data
+hot_pca_outlier_var <- as.data.frame(hot_pca_outlier_var$scores)
+hot_pca_outlier_var_bal <- bind_cols(select(train_hot_outlier, label = label), hot_pca_outlier_var)
+
+#ROSE shrunk
+hot_pca_outlier_var_rose <- ROSE(label~., data = hot_pca_outlier_var_bal, seed = 1,hmult.majo = 0.25 , hmult.mino = 0.5)$data
+table(hot_pca_outlier_var_rose$label)
+
+#SMOTE
+hot_pca_outlier_var_SMOTE <- SMOTE(X = hot_pca_outlier_var_bal[,-1], hot_pca_outlier_var_bal$label)$data
+table(hot_pca_outlier_var_SMOTE$class)
+
+#ADASYN
+hot_pca_outlier_var_ADASYN<-ADAS(X=hot_pca_outlier_var_bal[,-1], target=hot_pca_outlier_var_bal$label)$data
+table(hot_pca_outlier_var_ADASYN$class)
