@@ -1347,16 +1347,25 @@ plot(data_ADASYN$RC1,data_ADASYN$RC2,main="ADASYN resampling",
 legend("topleft", c("Majority class", "Minority class"), pch = 16, col = c("blue", "red"))
 
 # From visualising the results after balancing method in the plots above 
-# It can seen that there are only 3 reasonable balancing methods
-# which are ROSE shrunk, SMOTE and ADASYN
+# It can seen that there are only 5 reasonable balancing methods that give us enough data to model
+# The other methods not chosen give too little data to work with.
+# which are Oversampling, Over and under Sampling, ROSE shrunk, SMOTE and ADASYN
 
-# Below, the 3 chosen balancing methods will be applied to all datasets.
+# Below, the 5 chosen balancing methods will be applied to all datasets.
 
 # 10.1 hot_pca_na_k
 # Prepare for balancing by binding the target variable back with the data
 
 hot_pca_na_k <- as.data.frame(hot_pca_na_k$scores)
 hot_pca_na_k_bal <- bind_cols(select(hot_na, label = label), hot_pca_na_k)
+
+# over sampling 
+hot_pca_na_k_bal_over <- ovun.sample(label~., data = hot_pca_na_k_bal, method = "over",N = 2340)$data
+table(hot_pca_na_k_bal_over$label)
+
+# over and under sampling
+hot_pca_na_k_bal_both <- ovun.sample(label~., data = hot_pca_na_k_bal, method = "both", p=0.5,N=1253, seed = 1)$data
+table(hot_pca_na_k_bal_both$label)
 
 #ROSE shrunk
 hot_pca_na_k_rose <- ROSE(label~., data = hot_pca_na_k_bal, seed = 1,hmult.majo = 0.25 , hmult.mino = 0.5)$data
@@ -1375,6 +1384,14 @@ table(hot_pca_na_k_ADASYN$class)
 hot_pca_sd_k <- as.data.frame(hot_pca_sd_k$scores)
 hot_pca_sd_k_bal <- bind_cols(select(hot_sd, label = label), hot_pca_sd_k)
 
+# over sampling 
+hot_pca_sd_k_bal_over <- ovun.sample(label~., data = hot_pca_sd_k_bal, method = "over",N = 2340)$data
+table(hot_pca_sd_k_bal_over$label)
+
+# over and under sampling
+hot_pca_sd_k_bal_both <- ovun.sample(label~., data = hot_pca_sd_k_bal, method = "both", p=0.5,N=1253, seed = 1)$data
+table(hot_pca_sd_k_bal_both$label)
+
 #ROSE shrunk
 hot_pca_sd_k_rose <- ROSE(label~., data = hot_pca_sd_k_bal, seed = 1,hmult.majo = 0.25 , hmult.mino = 0.5)$data
 table(hot_pca_sd_k_rose$label)
@@ -1391,6 +1408,14 @@ table(hot_pca_sd_k_ADASYN$class)
 # Prepare for balancing by binding the target variable back with the data
 hot_pca_outlier_k <- as.data.frame(hot_pca_outlier_k$scores)
 hot_pca_outlier_k_bal <- bind_cols(select(train_hot_outlier, label = label), hot_pca_outlier_k)
+
+# over sampling 
+hot_pca_outlier_k_over <- ovun.sample(label~., data = hot_pca_outlier_k_bal, method = "over",N = 2340)$data
+table(hot_pca_outlier_k_over$label)
+
+# over and under sampling
+hot_pca_outlier_k_both <- ovun.sample(label~., data = hot_pca_outlier_k_bal, method = "both", p=0.5,N=1253, seed = 1)$data
+table(hot_pca_outlier_k_both$label)
 
 #ROSE shrunk
 hot_pca_outlier_k_rose <- ROSE(label~., data = hot_pca_outlier_k_bal, seed = 1,hmult.majo = 0.25 , hmult.mino = 0.5)$data
@@ -1409,6 +1434,14 @@ table(hot_pca_outlier_k_ADASYN$class)
 hot_pca_na_var <- as.data.frame(hot_pca_na_var$scores)
 hot_pca_na_var_bal <- bind_cols(select(hot_na, label = label), hot_pca_na_var)
 
+# over sampling 
+hot_pca_na_var_over <- ovun.sample(label~., data = hot_pca_na_var_bal, method = "over",N = 2340)$data
+table(hot_pca_na_var_over$label)
+
+# over and under sampling
+hot_pca_na_var_both <- ovun.sample(label~., data = hot_pca_na_var_bal, method = "both", p=0.5,N=1253, seed = 1)$data
+table(hot_pca_na_var_both$label)
+
 #ROSE shrunk
 hot_pca_na_var_rose <- ROSE(label~., data = hot_pca_na_var_bal, seed = 1,hmult.majo = 0.25 , hmult.mino = 0.5)$data
 table(hot_pca_na_var_rose$label)
@@ -1426,6 +1459,14 @@ table(hot_pca_na_var_ADASYN$class)
 hot_pca_sd_var <- as.data.frame(hot_pca_sd_var$scores)
 hot_pca_sd_var_bal <- bind_cols(select(hot_sd, label = label), hot_pca_sd_var)
 
+# over sampling 
+hot_pca_sd_var_over <- ovun.sample(label~., data = hot_pca_sd_var_bal, method = "over",N = 2340)$data
+table(hot_pca_sd_var_over$label)
+
+# over and under sampling
+hot_pca_sd_var_both <- ovun.sample(label~., data = hot_pca_sd_var_bal, method = "both", p=0.5,N=1253, seed = 1)$data
+table(hot_pca_sd_var_both$label)
+
 #ROSE shrunk
 hot_pca_sd_var_rose <- ROSE(label~., data = hot_pca_sd_var_bal, seed = 1,hmult.majo = 0.25 , hmult.mino = 0.5)$data
 table(hot_pca_sd_var_rose$label)
@@ -1442,6 +1483,14 @@ table(hot_pca_sd_var_ADASYN$class)
 # Prepare for balancing by binding the target variable back with the data
 hot_pca_outlier_var <- as.data.frame(hot_pca_outlier_var$scores)
 hot_pca_outlier_var_bal <- bind_cols(select(train_hot_outlier, label = label), hot_pca_outlier_var)
+
+# over sampling 
+hot_pca_outlier_var_over <- ovun.sample(label~., data = hot_pca_outlier_var_bal, method = "over",N = 2340)$data
+table(hot_pca_outlier_var_over$label)
+
+# over and under sampling
+hot_pca_outlier_var_both <- ovun.sample(label~., data = hot_pca_outlier_var_bal, method = "both", p=0.5,N=1253, seed = 1)$data
+table(hot_pca_outlier_var_both$label)
 
 #ROSE shrunk
 hot_pca_outlier_var_rose <- ROSE(label~., data = hot_pca_outlier_var_bal, seed = 1,hmult.majo = 0.25 , hmult.mino = 0.5)$data
