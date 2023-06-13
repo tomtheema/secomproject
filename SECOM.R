@@ -787,7 +787,7 @@ sum(is.na(irmi_na))
 # Check effects of imputation
 # Reverse scaling to check the effects of imputation 
 # For NA set
-train_irmi_na <- reverse_scaling(outlier_na[,names(outlier_na) %in% c("label","date"),irmi_na[,!names(irmi_na) %in% c("label")])
+train_irmi_na <- reverse_scaling(outlier_na[,names(outlier_na) %in% c("label","date")],irmi_na[,!names(irmi_na) %in% c("label")])
 train_irmi_na <- as_tibble(bind_cols(outlier_na[,names(outlier_na) %in% c("label","date")],train_irmi_na))
 
 saveRDS(train_irmi_na, "train_irmi_na.RDS")
@@ -797,7 +797,7 @@ train_irmi_na <- readRDS("train_irmi_na.RDS")
 train_irmi_na_var <- feature_var_all(train_irmi_na)
 
 # For SA set
-train_irmi_sd <- reverse_scaling(outlier_sd[,names(outlier_sd) %in% c("label","date"),irmi_sd[,!names(irmi_sd) %in% c("label")])
+train_irmi_sd <- reverse_scaling(outlier_sd[,names(outlier_sd) %in% c("label","date")],irmi_sd[,!names(irmi_sd) %in% c("label")])
 train_irmi_sd <- as_tibble(bind_cols(outlier_sd[,names(outlier_sd) %in% c("label","date")],train_irmi_sd))
 
 saveRDS(train_irmi_sd, "train_irmi_sd.RDS")
@@ -1303,9 +1303,19 @@ legend("topleft", c("Majority class", "Minority class"), pch = 16, col = c("blue
 
 # Below, the 5 chosen balancing methods will be applied to all datasets.
 
+# 10 Datasets from PCA (feature reduction) -------------------------------------
+
 # 10.1 hot_na_k
 # Prepare for balancing by binding the target variable back with the data
 hot_pca_na_k_bal <- bind_cols(select(hot_na, label = label), hot_na_k)
+
+# over sampling 
+hot_pca_na_k_bal_over <- ovun.sample(label~., data = hot_pca_na_k_bal, method = "over",N = 2340)$data
+table(hot_pca_na_k_bal_over$label)
+
+# over and under sampling
+hot_pca_na_k_bal_both <- ovun.sample(label~., data = hot_pca_na_k_bal, method = "both", p=0.5,N=1253, seed = 1)$data
+table(hot_pca_na_k_bal_both$label)
 
 #ROSE shrunk
 hot_pca_na_k_rose <- ROSE(label~., data = hot_pca_na_k_bal, seed = 1,hmult.majo = 0.25 , hmult.mino = 0.5)$data
@@ -1323,6 +1333,14 @@ table(hot_pca_na_k_ADASYN$class)
 # Prepare for balancing by binding the target variable back with the data
 hot_pca_sd_k_bal <- bind_cols(select(hot_sd, label = label), hot_sd_k)
 
+# over sampling 
+hot_pca_sd_k_bal_over <- ovun.sample(label~., data = hot_pca_sd_k_bal, method = "over",N = 2340)$data
+table(hot_pca_sd_k_bal_over$label)
+
+# over and under sampling
+hot_pca_sd_k_bal_both <- ovun.sample(label~., data = hot_pca_sd_k_bal, method = "both", p=0.5,N=1253, seed = 1)$data
+table(hot_pca_sd_k_bal_both$label)
+
 #ROSE shrunk
 hot_pca_sd_k_rose <- ROSE(label~., data = hot_pca_sd_k_bal, seed = 1,hmult.majo = 0.25 , hmult.mino = 0.5)$data
 table(hot_pca_sd_k_rose$label)
@@ -1338,6 +1356,14 @@ table(hot_pca_sd_k_ADASYN$class)
 #10.3 hot_outlier_k
 # Prepare for balancing by binding the target variable back with the data
 hot_pca_outlier_k_bal <- bind_cols(select(train_hot_outlier, label = label), hot_outlier_k)
+
+# over sampling 
+hot_pca_outlier_k_over <- ovun.sample(label~., data = hot_pca_outlier_k_bal, method = "over",N = 2340)$data
+table(hot_pca_outlier_k_over$label)
+
+# over and under sampling
+hot_pca_outlier_k_both <- ovun.sample(label~., data = hot_pca_outlier_k_bal, method = "both", p=0.5,N=1253, seed = 1)$data
+table(hot_pca_outlier_k_both$label)
 
 #ROSE shrunk
 hot_pca_outlier_k_rose <- ROSE(label~., data = hot_pca_outlier_k_bal, seed = 1,hmult.majo = 0.25 , hmult.mino = 0.5)$data
@@ -1355,6 +1381,14 @@ table(hot_pca_outlier_k_ADASYN$class)
 # Prepare for balancing by binding the target variable back with the data
 hot_pca_na_var_bal <- bind_cols(select(hot_na, label = label), hot_na_var)
 
+# over sampling 
+hot_pca_na_var_over <- ovun.sample(label~., data = hot_pca_na_var_bal, method = "over",N = 2340)$data
+table(hot_pca_na_var_over$label)
+
+# over and under sampling
+hot_pca_na_var_both <- ovun.sample(label~., data = hot_pca_na_var_bal, method = "both", p=0.5,N=1253, seed = 1)$data
+table(hot_pca_na_var_both$label)
+
 #ROSE shrunk
 hot_pca_na_var_rose <- ROSE(label~., data = hot_pca_na_var_bal, seed = 1,hmult.majo = 0.25 , hmult.mino = 0.5)$data
 table(hot_pca_na_var_rose$label)
@@ -1370,6 +1404,14 @@ table(hot_pca_na_var_ADASYN$class)
 #10.5 hot_na_var
 # Prepare for balancing by binding the target variable back with the data
 hot_pca_sd_var_bal <- bind_cols(select(hot_sd, label = label), hot_sd_var)
+
+# over sampling 
+hot_pca_sd_var_over <- ovun.sample(label~., data = hot_pca_sd_var_bal, method = "over",N = 2340)$data
+table(hot_pca_sd_var_over$label)
+
+# over and under sampling
+hot_pca_sd_var_both <- ovun.sample(label~., data = hot_pca_sd_var_bal, method = "both", p=0.5,N=1253, seed = 1)$data
+table(hot_pca_sd_var_both$label)
 
 #ROSE shrunk
 hot_pca_sd_var_rose <- ROSE(label~., data = hot_pca_sd_var_bal, seed = 1,hmult.majo = 0.25 , hmult.mino = 0.5)$data
@@ -1387,6 +1429,14 @@ table(hot_pca_sd_var_ADASYN$class)
 # Prepare for balancing by binding the target variable back with the data
 hot_pca_outlier_var_bal <- bind_cols(select(train_hot_outlier, label = label), hot_outlier_var)
 
+# over sampling 
+hot_pca_outlier_var_over <- ovun.sample(label~., data = hot_pca_outlier_var_bal, method = "over",N = 2340)$data
+table(hot_pca_outlier_var_over$label)
+
+# over and under sampling
+hot_pca_outlier_var_both <- ovun.sample(label~., data = hot_pca_outlier_var_bal, method = "both", p=0.5,N=1253, seed = 1)$data
+table(hot_pca_outlier_var_both$label)
+
 #ROSE shrunk
 hot_pca_outlier_var_rose <- ROSE(label~., data = hot_pca_outlier_var_bal, seed = 1,hmult.majo = 0.25 , hmult.mino = 0.5)$data
 table(hot_pca_outlier_var_rose$label)
@@ -1399,6 +1449,177 @@ table(hot_pca_outlier_var_SMOTE$class)
 hot_pca_outlier_var_ADASYN<-ADAS(X=hot_pca_outlier_var_bal[,-1], target=hot_pca_outlier_var_bal$label)$data
 table(hot_pca_outlier_var_ADASYN$class)
 
+# 10 Datasets from BORUTA (feature selection) ----------------------------------
+
+#10.7 knn_na_boruta
+
+# select only features that got confirmed by boruta from the training set
+knn_na_boruta_data <- knn_na[, selected_knn_na_boruta]
+
+# Prepare for balancing by binding the target variable back with the data
+knn_na_boruta_bal <- bind_cols(select(knn_na, label = label), knn_na_boruta_data)
+
+# over sampling 
+knn_na_boruta_over <- ovun.sample(label~., data = knn_na_boruta_bal, method = "over",N = 2340)$data
+table(knn_na_boruta_over$label)
+
+# over and under sampling
+knn_na_boruta_both <- ovun.sample(label~., data = knn_na_boruta_bal, method = "both", p=0.5,N=1253, seed = 1)$data
+table(knn_na_boruta_both$label)
+
+#ROSE shrunk
+knn_na_boruta_rose <- ROSE(label~., data = knn_na_boruta_bal, seed = 1,hmult.majo = 0.25 , hmult.mino = 0.5)$data
+table(knn_na_boruta_rose$label)
+
+#SMOTE
+knn_na_boruta_SMOTE <- SMOTE(X = knn_na_boruta_bal[,-1], knn_na_boruta_bal$label)$data
+table(knn_na_boruta_SMOTE$class)
+
+#ADASYN
+knn_na_boruta_ADASYN<-ADAS(X=knn_na_boruta_bal[,-1], target=knn_na_boruta_bal$label)$data
+table(knn_na_boruta_ADASYN$class)
+
+#10.8 knn_sd_boruta
+
+# select only features that got confirmed by boruta from the training set
+knn_sd_boruta_data <- knn_sd[, selected_knn_sd_boruta]
+
+# Prepare for balancing by binding the target variable back with the data
+knn_sd_boruta_bal <- bind_cols(select(knn_sd, label = label), knn_sd_boruta_data)
+
+# over sampling 
+knn_sd_boruta_over <- ovun.sample(label~., data = knn_sd_boruta_bal, method = "over",N = 2340)$data
+table(knn_sd_boruta_over$label)
+
+# over and under sampling
+knn_sd_boruta_both <- ovun.sample(label~., data = knn_sd_boruta_bal, method = "both", p=0.5,N=1253, seed = 1)$data
+table(knn_sd_boruta_both$label)
+
+#ROSE shrunk
+knn_sd_boruta_rose <- ROSE(label~., data = knn_sd_boruta_bal, seed = 1,hmult.majo = 0.25 , hmult.mino = 0.5)$data
+table(knn_sd_boruta_rose$label)
+
+#SMOTE
+knn_sd_boruta_SMOTE <- SMOTE(X = knn_sd_boruta_bal[,-1], knn_sd_boruta_bal$label)$data
+table(knn_sd_boruta_SMOTE$class)
+
+#ADASYN
+knn_sd_boruta_ADASYN<-ADAS(X=knn_sd_boruta_bal[,-1], target=knn_sd_boruta_bal$label)$data
+table(knn_sd_boruta_ADASYN$class)
+
+#10.9 irmi_na_boruta
+
+# select only features that got confirmed by boruta from the training set
+irmi_na_boruta_data <- irmi_na[, selected_irmi_na_boruta]
+
+# Prepare for balancing by binding the target variable back with the data
+irmi_na_boruta_bal <- bind_cols(select(irmi_na, label = label), irmi_na_boruta_data)
+
+# over sampling 
+irmi_na_boruta_over <- ovun.sample(label~., data = irmi_na_boruta_bal, method = "over",N = 2340)$data
+table(irmi_na_boruta_over$label)
+
+# over and under sampling
+irmi_na_boruta_both <- ovun.sample(label~., data = irmi_na_boruta_bal, method = "both", p=0.5,N=1253, seed = 1)$data
+table(irmi_na_boruta_both$label)
+
+#ROSE shrunk
+irmi_na_boruta_rose <- ROSE(label~., data = irmi_na_boruta_bal, seed = 1,hmult.majo = 0.25 , hmult.mino = 0.5)$data
+table(irmi_na_boruta_rose$label)
+
+#SMOTE
+irmi_na_boruta_SMOTE <- SMOTE(X = irmi_na_boruta_bal[,-1], irmi_na_boruta_bal$label)$data
+table(irmi_na_boruta_SMOTE$class)
+
+#ADASYN
+irmi_na_boruta_ADASYN<-ADAS(X=irmi_na_boruta_bal[,-1], target=irmi_na_boruta_bal$label)$data
+table(irmi_na_boruta_ADASYN$class)
+
+#10.10 irmi_sd_boruta
+
+# select only features that got confirmed by boruta from the training set
+irmi_sd_boruta_data <- irmi_sd[, selected_irmi_sd_boruta]
+
+# Prepare for balancing by binding the target variable back with the data
+irmi_sd_boruta_bal <- bind_cols(select(irmi_sd, label = label), irmi_sd_boruta_data)
+
+# over sampling 
+irmi_sd_boruta_over <- ovun.sample(label~., data = irmi_sd_boruta_bal, method = "over",N = 2340)$data
+table(irmi_sd_boruta_over$label)
+
+# over and under sampling
+irmi_sd_boruta_both <- ovun.sample(label~., data = irmi_sd_boruta_bal, method = "both", p=0.5,N=1253, seed = 1)$data
+table(irmi_sd_boruta_both$label)
+
+#ROSE shrunk
+irmi_sd_boruta_rose <- ROSE(label~., data = irmi_sd_boruta_bal, seed = 1,hmult.majo = 0.25 , hmult.mino = 0.5)$data
+table(irmi_sd_boruta_rose$label)
+
+#SMOTE
+irmi_sd_boruta_SMOTE <- SMOTE(X = irmi_sd_boruta_bal[,-1], irmi_sd_boruta_bal$label)$data
+table(irmi_sd_boruta_SMOTE$class)
+
+#ADASYN
+irmi_sd_boruta_ADASYN<-ADAS(X=irmi_sd_boruta_bal[,-1], target=irmi_sd_boruta_bal$label)$data
+table(irmi_sd_boruta_ADASYN$class)
+
+#10.11 hot_na_boruta
+
+# select only features that got confirmed by boruta from the training set
+hot_na_boruta_data <- hot_na[, selected_hot_na_boruta]
+
+# Prepare for balancing by binding the target variable back with the data
+hot_na_boruta_bal <- bind_cols(select(hot_na, label = label), hot_na_boruta_data)
+
+# over sampling 
+hot_na_boruta_over <- ovun.sample(label~., data = hot_na_boruta_bal, method = "over",N = 2340)$data
+table(hot_na_boruta_over$label)
+
+# over and under sampling
+hot_na_boruta_both <- ovun.sample(label~., data = hot_na_boruta_bal, method = "both", p=0.5,N=1253, seed = 1)$data
+table(hot_na_boruta_both$label)
+
+#ROSE shrunk
+hot_na_boruta_rose <- ROSE(label~., data = hot_na_boruta_bal, seed = 1,hmult.majo = 0.25 , hmult.mino = 0.5)$data
+table(hot_na_boruta_rose$label)
+
+#SMOTE
+hot_na_boruta_SMOTE <- SMOTE(X = hot_na_boruta_bal[,-1], hot_na_boruta_bal$label)$data
+table(hot_na_boruta_SMOTE$class)
+
+#ADASYN
+hot_na_boruta_ADASYN<-ADAS(X=hot_na_boruta_bal[,-1], target=hot_na_boruta_bal$label)$data
+table(hot_na_boruta_ADASYN$class)
+
+#10.12 hot_sd_boruta
+
+# select only features that got confirmed by boruta from the training set
+hot_sd_boruta_data <- hot_sd[, selected_hot_sd_boruta]
+
+# Prepare for balancing by binding the target variable back with the data
+hot_sd_boruta_bal <- bind_cols(select(hot_sd, label = label), hot_sd_boruta_data)
+
+# over sampling 
+hot_sd_boruta_over <- ovun.sample(label~., data = hot_sd_boruta_bal, method = "over",N = 2340)$data
+table(hot_sd_boruta_over$label)
+
+# over and under sampling
+hot_sd_boruta_both <- ovun.sample(label~., data = hot_sd_boruta_bal, method = "both", p=0.5,N=1253, seed = 1)$data
+table(hot_sd_boruta_both$label)
+
+#ROSE shrunk
+hot_sd_boruta_rose <- ROSE(label~., data = hot_sd_boruta_bal, seed = 1,hmult.majo = 0.25 , hmult.mino = 0.5)$data
+table(hot_sd_boruta_rose$label)
+
+#SMOTE
+hot_sd_boruta_SMOTE <- SMOTE(X = hot_sd_boruta_bal[,-1], hot_sd_boruta_bal$label)$data
+table(hot_sd_boruta_SMOTE$class)
+
+#ADASYN
+hot_sd_boruta_ADASYN<-ADAS(X=hot_sd_boruta_bal[,-1], target=hot_sd_boruta_bal$label)$data
+table(hot_sd_boruta_ADASYN$class)
+                
+                
 # XI Modeling
 # 1 Prepare the test set
 # 1.1 Dimensionality reduction
