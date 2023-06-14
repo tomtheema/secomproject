@@ -1679,14 +1679,14 @@ test_outlier_sd <- test_red %>%
 # 1.3 Missing value imputaton
 # 1.3.1 Hot deck
 # After outlier handling
-test_hot_na <- hotdeck(test_outlier_na2, impNA = T, imp_var = F)
+test_hot_na <- hotdeck(test_outlier_na, impNA = T, imp_var = F)
 sum(is.na(test_hot_na))
 
-test_hot_sd <- hotdeck(test_outlier_sd2, impNA = T, imp_var = F)
+test_hot_sd <- hotdeck(test_outlier_sd, impNA = T, imp_var = F)
 sum(is.na(test_hot_sd))
 
 # Before outlier handling
-test_hot_outlier <- hotdeck(test_red2, impNA = T, imp_var = F)
+test_hot_outlier <- hotdeck(test_red, impNA = T, imp_var = F)
 sum(is.na(test_hot_outlier))
 
 test_hot_outlier <- test_hot_outlier %>%
