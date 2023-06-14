@@ -1679,14 +1679,14 @@ test_outlier_sd <- test_red %>%
 # 1.3 Missing value imputaton
 # 1.3.1 Hot deck
 # After outlier handling
-test_hot_na <- hotdeck(test_outlier_na, impNA = T, imp_var = F)
+test_hot_na <- hotdeck(test_outlier_na2, impNA = T, imp_var = F)
 sum(is.na(test_hot_na))
 
-test_hot_sd <- hotdeck(test_outlier_sd, impNA = T, imp_var = F)
+test_hot_sd <- hotdeck(test_outlier_sd2, impNA = T, imp_var = F)
 sum(is.na(test_hot_sd))
 
 # Before outlier handling
-test_hot_outlier <- hotdeck(test_red, impNA = T, imp_var = F)
+test_hot_outlier <- hotdeck(test_red2, impNA = T, imp_var = F)
 sum(is.na(test_hot_outlier))
 
 test_hot_outlier <- test_hot_outlier %>%
@@ -1801,10 +1801,39 @@ result <- model_result(pred_rf1, test_hot_pca_na_k$label)
 
 ROC <- function(model, test_data) {
   pred_probs <- as.numeric(predict(model, newdata = test_data, type = "response"))
-  pred <- prediction(as.numeric(pred_test1), test_hot_pca_na_k$label)          
+  pred <- prediction(as.numeric(pred_probs), test_hot_pca_na_k$label)          
   perf <- performance(pred, measure = "tpr", x.measure = "fpr") 
   roc_curve <- plot(perf, main = "ROC Curve", lwd = 3, col = "darkred")
   return(roc_curve)
 }
 roc <- ROC(hot_pca_na_k_rose_rf,test_hot_pca_na_k)
 
+# 2.2 On BORUTA datasets
+# 2.2.1 hot_na_boruta_rose sets = hot deck imputed datasets with BORUTA and balancing by ROSE shrunk balancing
+# Train model on hot_na_boruta_rose set by manually fitting the Random Forest
+
+# select only features that got confirmed by boruta algorithm of the training set 
+test_hot_na_boruta_data <- test_hot_na[, selected_hot_na_boruta]
+
+# build Random Forest model based on hot_na_boruta_rose training set
+set.seed(12345)
+hot_na_boruta_rose_rf <- randomForest(data = hot_na_boruta_rose[,!names(hot_na_boruta_rose) %in% ("label")],
+                                     x = hot_na_boruta_rose[,!names(hot_na_boruta_rose) %in% ("label")],
+                                     y = as.factor(hot_na_boruta_rose$label),
+                                     ntree = 400,
+                                     importance = T,
+                                     localImp = T,
+                                     replace = T,
+                                     nodesize = 5,
+                                     proximity = F)
+
+# 2.2.2 Predict the test set with the Random Forest model
+pred_rf2 <- predict(hot_na_boruta_rose_rf, newdata = test_hot_na_boruta_data, type = "class")
+
+# bind the label back with the dataset
+test_hot_na_boruta_data <- bind_cols(select(test_hot_na, label = label), test_hot_na_boruta_data)
+
+# process the result of the random forest model
+result2 <- model_result(pred_rf2, test_hot_na_boruta_data$label)
+
+roc2 <- ROC(hot_na_boruta_rose_rf,test_hot_na_boruta_data)
