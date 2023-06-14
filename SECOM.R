@@ -1135,10 +1135,11 @@ scree_outlier <- VSS.scree(hot_outlier_norm)
 PCA_extract <- function(x, method = c("Kaiser", "Variance")) {
   pca <- PCA(x, graph = F)
   eigen <- as.tibble(pca$eig)
+  # Set to 80 to avoid overfitting
   if (method == "Variance") {
     nf <- eigen %>%
       rename(pov = 2, cpov = 3) %>%
-      filter(cpov <= 90) %>%
+      filter(cpov <= 80) %>%
       nrow()
   } else {
     nf <- eigen %>%
@@ -1689,6 +1690,52 @@ test_hot_pca_na_k <- bind_cols(select(test_hot_na, label = label), test_hot_na_k
 # ROSE shrunk balancing
 # Train model on hot_pca_n_k_rose_rf set
 set.seed(12345)
+# Custom random forest model needed to use cross validation on parameters ntree and nodesize
+customRF <- list(type = "Classification", 
+                 library = "randomForest", 
+                 loop = NULL)
+customRF$parameters <- data.frame(parameter = c("mtry", "ntree", "nodesize"), 
+                                  class = rep("numeric", 3), 
+                                  label = c("mtry", "ntree", "nodesize"))
+customRF$grid <- function(x, y, len = NULL, search = "grid") {}
+customRF$fit <- function(x, y, wts, param, lev, last, weights, classProbs, ...) {
+  randomForest(x, y, mtry = param$mtry, ntree=param$ntree, nodesize=param$ntree,...)
+}
+customRF$predict <- function(modelFit, newdata, preProc = NULL, submodels = NULL)
+  # predict(modelFit, newdata)
+  customRF$prob <- function(modelFit, newdata, preProc = NULL, submodels = NULL)
+    # predict(modelFit, newdata, type = "prob")
+    customRF$sort <- function(x) x[order(x[,1]),]
+customRF$levels <- function(x) x$classes
+customRF
+
+# Train custom random forest model
+# Parameters for controlling the training with cross validation
+train_control <- trainControl(method = "cv",
+                              number = 5,
+                              search = "grid")
+# Parameters of the random forest to be optimised
+traingrid <- expand.grid(mtry = c(1:10), 
+                         ntree = seq(50,400,50), 
+                         nodesize = c(1:10))
+# Train model, computation time ~ 30 mins
+hot_pca_na_k_rose_rf <- train(label~., 
+                              data = hot_pca_na_k_rose,
+                              method = customRF,
+                              trControl = train_control,
+                              tuneGrid = traingrid)
+
+# Alternatively fit random forest manually (must faster than train + corss-fold)
+hot_pca_na_k_rose_rf <- randomForest(label~.,
+                                     data = hot_pca_na_k_rose,
+                                     mtry = 3,
+                                     ntree = 70,
+                                     nodesize = 1,
+                                     importance = T,
+                                     localImp = T,
+                                     replace = T,
+                                     proximity = F)
+
 hot_pca_na_k_rose_rf <- randomForest(data = hot_pca_na_k_rose,
                                      x = hot_pca_na_k_rose[,!names(hot_pca_na_k_rose) %in% ("label")],
                                      y = as.factor(hot_pca_na_k_rose$label),
