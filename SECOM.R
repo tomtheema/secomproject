@@ -1096,6 +1096,38 @@ train_hot_outlier_boruta_stats <- attStats(train_hot_outlier_boruta_tent)
 plot(normHits~meanImp,col=train_hot_outlier_boruta_stats$decision,data=train_hot_outlier_boruta_stats)
 print(train_hot_outlier_boruta_stats)
 
+# Overview of remaining features using statistical methods after BORUTA---------
+
+# select only features that got confirmed by boruta algorithm of the training set 
+remaining_hot_na_boruta <- hot_na[, selected_hot_na_boruta]
+print(remaining_hot_na_boruta)
+
+# bind the label back with the dataset
+remaining_hot_na_boruta <- bind_cols(select(hot_na, label = label), remaining_hot_na_boruta)
+
+# Descriptive statistics - Variance and Coefficient of Variance
+remaining_hot_na_boruta_var <- feature_var_all(remaining_hot_na_boruta[,!names(remaining_hot_na_boruta) %in% c("label")])
+print(remaining_hot_na_boruta_var) 
+remaining_hot_na_boruta_cv <- feature_cv_all(remaining_hot_na_boruta[,!names(remaining_hot_na_boruta) %in% c("label")])
+print(remaining_hot_na_boruta_cv) 
+
+# Histogram of the coefficients of variance
+remaining_hot_na_boruta_hist.cv <- remaining_hot_na_boruta_cv %>%
+  ggplot(aes(coef_var))+
+  geom_histogram(col = "black",
+                 fill = "navyblue",
+                 alpha = 0.7)+
+  labs(title="Histogram of Feature Volatility",
+       x = "Coefficient of variance",
+       y = "Frequency")+
+  theme_bw()
+print(remaining_hot_na_boruta_hist.cv)
+summary(remaining_hot_na_boruta_hist.cv)
+
+# Correlation matrix
+remaining_hot_na_boruta_cor <- cor(remaining_hot_na_boruta)
+corrplot(remaining_hot_na_boruta_cor, method = 'square', type = 'upper')
+
                 
 # 2 Feature reduction with PCA ------------------------------------------------
 # 2.1 Function to check if dataset is suitable for PCA
