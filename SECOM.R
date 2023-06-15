@@ -816,322 +816,10 @@ train_irmi_sd_var <- feature_var_all(train_irmi_sd)
 
 
 # IX Feature selection/reduction
-# 1 Feature selection by BORUTA -----------------------------------------------
 
-# use Boruta algorithm on the imputed dataset
-set.seed(1234)
-
-# 9.1 Perform Boruta algorithm on scaled 'knn_na'
-knn_na_boruta <- Boruta(
-  label~.,
-  data = knn_na,
-  pValue = 0.05,   # Set the p-value threshold to 0.05
-  maxRuns = 200,   # Set the maximum number of runs to 200
-  doTrace = 2      # Allows you to get a report of the progress of the process
-)
-print(knn_na_boruta)
-
-#take a call on tentative features
-knn_na_boruta_tent <- TentativeRoughFix(knn_na_boruta)
-print(knn_na_boruta_tent)
-
-# confirm the importance of the features
-getSelectedAttributes(knn_na_boruta_tent, withTentative = T)
-# there are 17 confirmed important features and the rest 444 features are rejected.
-knn_na_boruta_stats <- attStats(knn_na_boruta_tent)
-plot(normHits~meanImp,col=knn_na_boruta_stats$decision,data=knn_na_boruta_stats)
-print(knn_na_boruta_stats)
-                
-# 9.2 Perform Boruta algorithm on scaled 'knn_sd'
-knn_sd_boruta <- Boruta(
-  label~.,
-  data = knn_sd,
-  pValue = 0.05,   # Set the p-value threshold to 0.05
-  maxRuns = 200,   # Set the maximum number of runs to 200
-  doTrace = 2      # Allows you to get a report of the progress of the process
-)
-print(knn_sd_boruta)
-#take a call on tentative features
-knn_sd_boruta_tent <- TentativeRoughFix(knn_sd_boruta)
-print(knn_sd_boruta_tent)
-
-# you can confirm the importance of the features by typing
-getSelectedAttributes(knn_sd_boruta_tent, withTentative = T)
-# there are  25 confirmed important features and the rest 436 features are rejected.
-knn_sd_boruta_stats <- attStats(knn_sd_boruta_tent)
-plot(normHits~meanImp,col=knn_sd_boruta_stats$decision,data=knn_sd_boruta_stats)
-print(knn_sd_boruta_stats)
-
-# 9.3 Perform Boruta algorithm on scaled 'irmi_na'
-irmi_na_boruta <- Boruta(
-  label~.,
-  data = irmi_na,
-  pValue = 0.05,   # Set the p-value threshold to 0.05
-  maxRuns = 200,   # Set the maximum number of runs to 200
-  doTrace = 2      # Allows you to get a report of the progress of the process
-)
-print(irmi_na_boruta)
-#take a call on tentative features
-irmi_na_boruta_tent <- TentativeRoughFix(irmi_na_boruta)
-print(irmi_na_boruta_tent)
-
-# you can confirm the importance of the features by typing
-getSelectedAttributes(irmi_na_boruta_tent, withTentative = T)
-# there are  22 confirmed important features and the rest 438 features are rejected.
-irmi_na_boruta_stats <- attStats(irmi_na_boruta_tent)
-plot(normHits~meanImp,col=irmi_na_boruta_stats$decision,data=irmi_na_boruta_stats)
-print(irmi_na_boruta_stats)
-
-# 9.4 Perform Boruta algorithm on scaled 'irmi_sd'
-irmi_sd_boruta <- Boruta(
-  label~.,
-  data = irmi_sd,
-  pValue = 0.05,   # Set the p-value threshold to 0.05
-  maxRuns = 200,   # Set the maximum number of runs to 200
-  doTrace = 2      # Allows you to get a report of the progress of the process
-)
-print(irmi_sd_boruta)
-#take a call on tentative features
-irmi_sd_boruta_tent <- TentativeRoughFix(irmi_sd_boruta)
-print(irmi_sd_boruta_tent)
-
-# you can confirm the importance of the features by typing
-getSelectedAttributes(irmi_sd_boruta_tent, withTentative = T)
-# there are  35 confirmed important features and the rest 425 features are rejected.
-irmi_sd_boruta_stats <- attStats(irmi_sd_boruta_tent)
-plot(normHits~meanImp,col=irmi_sd_boruta_stats$decision,data=irmi_sd_boruta_stats)
-print(irmi_sd_boruta_stats)
-
-
-# 9.5 Perform Boruta algorithm on unscaled 'train_knn_na'
-train_knn_na_boruta <- bind_cols(select(knn_na, label = label), train_knn_na)
-
-train_knn_na_boruta <- Boruta(
-  label~.,
-  data = train_knn_na_boruta,
-  pValue = 0.05,   # Set the p-value threshold to 0.05
-  maxRuns = 200,   # Set the maximum number of runs to 200
-  doTrace = 2      # Allows you to get a report of the progress of the process
-)
-print(train_knn_na_boruta)
-
-#take a call on tentative features
-train_knn_na_boruta_tent <- TentativeRoughFix(train_knn_na_boruta)
-print(train_knn_na_boruta_tent)
-
-# confirm the importance of the features
-getSelectedAttributes(train_knn_na_boruta_tent, withTentative = T)
-# there are  7 confirmed important features and the rest 453 features are rejected.
-train_knn_na_boruta_stats <- attStats(train_knn_na_boruta_tent)
-plot(normHits~meanImp,col=train_knn_na_boruta_stats$decision,data=train_knn_na_boruta_stats)
-print(train_knn_na_boruta_stats)
-
-# 9.6 Perform Boruta algorithm on unscaled 'train_knn_sd'
-train_knn_sd_boruta <- bind_cols(select(knn_sd, label = label), train_knn_sd)
-
-train_knn_sd_boruta <- Boruta(
-  label~.,
-  data = train_knn_sd_boruta,
-  pValue = 0.05,   # Set the p-value threshold to 0.05
-  maxRuns = 200,   # Set the maximum number of runs to 200
-  doTrace = 2      # Allows you to get a report of the progress of the process
-)
-print(train_knn_sd_boruta)
-
-#take a call on tentative features
-train_knn_sd_boruta_tent <- TentativeRoughFix(train_knn_sd_boruta)
-print(train_knn_sd_boruta_tent)
-
-# confirm the importance of the features
-getSelectedAttributes(train_knn_sd_boruta_tent, withTentative = T)
-# there is only 1 confirmed important features and the rest 453 features are rejected.
-train_knn_sd_boruta_stats <- attStats(train_knn_sd_boruta_tent)
-plot(normHits~meanImp,col=train_knn_sd_boruta_stats$decision,data=train_knn_sd_boruta_stats)
-print(train_knn_sd_boruta_stats)
-
-# 9.7 Perform Boruta algorithm on unscaled 'train_irmi_na'
-train_irmi_na_boruta <- Boruta(
-  label~.,
-  data = train_irmi_na,
-  pValue = 0.05,   # Set the p-value threshold to 0.05
-  maxRuns = 200,   # Set the maximum number of runs to 200
-  doTrace = 2      # Allows you to get a report of the progress of the process
-)
-print(train_irmi_na_boruta)
-#take a call on tentative features
-train_irmi_na_boruta_tent <- TentativeRoughFix(train_irmi_na_boruta)
-print(train_irmi_na_boruta_tent)
-
-# you can confirm the importance of the features by typing
-getSelectedAttributes(train_irmi_na_boruta_tent, withTentative = T)
-# there are  22 confirmed important features and the rest 438 features are rejected.
-train_irmi_na_boruta_stats <- attStats(train_irmi_na_boruta_tent)
-plot(normHits~meanImp,col=train_irmi_na_boruta_stats$decision,data=train_irmi_na_boruta_stats)
-print(train_irmi_na_boruta_stats)
-
-# 9.8 Perform Boruta algorithm on unscaled 'train_irmi_sd'
-train_irmi_sd_boruta <- Boruta(
-  label~.,
-  data = train_irmi_sd,
-  pValue = 0.05,   # Set the p-value threshold to 0.05
-  maxRuns = 200,   # Set the maximum number of runs to 200
-  doTrace = 2      # Allows you to get a report of the progress of the process
-)
-print(train_irmi_sd_boruta)
-#take a call on tentative features
-train_irmi_sd_boruta_tent <- TentativeRoughFix(train_irmi_sd_boruta)
-print(train_irmi_sd_boruta_tent)
-
-# you can confirm the importance of the features by typing
-getSelectedAttributes(train_irmi_sd_boruta_tent, withTentative = T)
-# there are  22 confirmed important features and the rest 438 features are rejected.
-train_irmi_sd_boruta_stats <- attStats(train_irmi_sd_boruta_tent)
-plot(normHits~meanImp,col=train_irmi_sd_boruta_stats$decision,data=train_irmi_sd_boruta_stats)
-print(train_irmi_sd_boruta_stats)
-
-# 9.9 Perform scaling and Boruta algorithm on unscaled 'hot_na'
-hot_na_boruta <- bind_cols(select(outlier_na, label = label), hot_na_norm)
-hot_na_boruta <- Boruta(
-  label~.,
-  data = hot_na_boruta,
-  pValue = 0.05,   # Set the p-value threshold to 0.05
-  maxRuns = 200,   # Set the maximum number of runs to 200
-  doTrace = 2      # Allows you to get a report of the progress of the process
-)
-print(hot_na_boruta)
-#take a call on tentative features
-hot_na_boruta_tent <- TentativeRoughFix(hot_na_boruta)
-print(hot_na_boruta_tent)
-
-# you can confirm the importance of the features by typing
-getSelectedAttributes(hot_na_boruta_tent, withTentative = T)
-# there are  13 confirmed important features and the rest 438 features are rejected.
-hot_na_boruta_stats <- attStats(hot_na_boruta_tent)
-plot(normHits~meanImp,col=hot_na_boruta_stats$decision,data=hot_na_boruta_stats)
-print(hot_na_boruta_stats)
-
-# 9.10 Perform scaling and Boruta algorithm on unscaled 'hot_na'
-hot_sd_boruta <- bind_cols(select(outlier_sd, label = label), hot_sd_norm)
-hot_sd_boruta <- Boruta(
-  label~.,
-  data = hot_sd_boruta,
-  pValue = 0.05,   # Set the p-value threshold to 0.05
-  maxRuns = 200,   # Set the maximum number of runs to 200
-  doTrace = 2      # Allows you to get a report of the progress of the process
-)
-print(hot_sd_boruta)
-#take a call on tentative features
-hot_sd_boruta_tent <- TentativeRoughFix(hot_sd_boruta)
-print(hot_sd_boruta_tent)
-
-# you can confirm the importance of the features by typing
-getSelectedAttributes(hot_sd_boruta_tent, withTentative = T)
-# there are  13 confirmed important features and the rest 438 features are rejected.
-hot_sd_boruta_stats <- attStats(hot_sd_boruta_tent)
-plot(normHits~meanImp,col=hot_sd_boruta_stats$decision,data=hot_sd_boruta_stats)
-print(hot_sd_boruta_stats)
-
-# 9.10 Perform scaling and Boruta algorithm on unscaled 'hot_na'
-hot_sd_boruta <- bind_cols(select(outlier_sd, label = label), hot_sd_norm)
-hot_sd_boruta <- Boruta(
-  label~.,
-  data = hot_sd_boruta,
-  pValue = 0.05,   # Set the p-value threshold to 0.05
-  maxRuns = 200,   # Set the maximum number of runs to 200
-  doTrace = 2      # Allows you to get a report of the progress of the process
-)
-print(hot_sd_boruta)
-#take a call on tentative features
-hot_sd_boruta_tent <- TentativeRoughFix(hot_sd_boruta)
-print(hot_sd_boruta_tent)
-
-# you can confirm the importance of the features by typing
-getSelectedAttributes(hot_sd_boruta_tent, withTentative = T)
-# there are  13 confirmed important features and the rest 438 features are rejected.
-hot_sd_boruta_stats <- attStats(hot_sd_boruta_tent)
-plot(normHits~meanImp,col=hot_sd_boruta_stats$decision,data=hot_sd_boruta_stats)
-print(hot_sd_boruta_stats)
-
-# 9.11 Perform scaling and Boruta algorithm on unscaled 'train_knn_outlier'
-train_knn_outlier_norm <- scale(train_knn_outlier, scale = T, center = T)
-train_knn_outlier_boruta <- bind_cols(select(hot_red, label = label), train_knn_outlier_norm)
-train_knn_outlier_boruta <- Boruta(
-  label~.,
-  data = train_knn_outlier_boruta ,
-  pValue = 0.05,   # Set the p-value threshold to 0.05
-  maxRuns = 200,   # Set the maximum number of runs to 200
-  doTrace = 2      # Allows you to get a report of the progress of the process
-)
-print(train_knn_outlier_boruta)
-#take a call on tentative features
-train_knn_outlier_boruta_tent <- TentativeRoughFix(train_knn_outlier_boruta)
-print(train_knn_outlier_boruta_tent)
-
-# you can confirm the importance of the features by typing
-getSelectedAttributes(train_knn_outlier_boruta_tent, withTentative = T)
-# there are  4 confirmed important features and the rest 456 features are rejected.
-train_knn_outlier_boruta_stats <- attStats(train_knn_outlier_boruta_tent)
-plot(normHits~meanImp,col=train_knn_outlier_boruta_stats$decision,data=train_knn_outlier_boruta_stats)
-print(train_knn_outlier_boruta_stats)
-
-# 9.12 Perform scaling and Boruta algorithm on unscaled 'train_hot_outlier'
-train_hot_outlier_norm <- scale(train_hot_outlier[,!names(train_hot_outlier)%in%c("label","date")], scale = T, center = T)
-train_hot_outlier_boruta <- bind_cols(select(hot_red, label = label), train_knn_outlier_norm)
-train_hot_outlier_boruta <- Boruta(
-  label~.,
-  data = train_hot_outlier_boruta ,
-  pValue = 0.05,   # Set the p-value threshold to 0.05
-  maxRuns = 200,   # Set the maximum number of runs to 200
-  doTrace = 2      # Allows you to get a report of the progress of the process
-)
-print(train_hot_outlier_boruta)
-#take a call on tentative features
-train_hot_outlier_boruta_tent <- TentativeRoughFix(train_hot_outlier_boruta)
-print(train_hot_outlier_boruta_tent)
-
-# you can confirm the importance of the features by typing
-getSelectedAttributes(train_hot_outlier_boruta_tent, withTentative = T)
-# there are 6 confirmed important features and the rest 454 features are rejected.
-train_hot_outlier_boruta_stats <- attStats(train_hot_outlier_boruta_tent)
-plot(normHits~meanImp,col=train_hot_outlier_boruta_stats$decision,data=train_hot_outlier_boruta_stats)
-print(train_hot_outlier_boruta_stats)
-
-# Overview of remaining features using statistical methods after BORUTA---------
-
-# select only features that got confirmed by boruta algorithm of the training set 
-remaining_hot_na_boruta <- hot_na[, selected_hot_na_boruta]
-print(remaining_hot_na_boruta)
-
-# bind the label back with the dataset
-remaining_hot_na_boruta <- bind_cols(select(hot_na, label = label), remaining_hot_na_boruta)
-
-# Descriptive statistics - Variance and Coefficient of Variance
-remaining_hot_na_boruta_var <- feature_var_all(remaining_hot_na_boruta[,!names(remaining_hot_na_boruta) %in% c("label")])
-print(remaining_hot_na_boruta_var) 
-remaining_hot_na_boruta_cv <- feature_cv_all(remaining_hot_na_boruta[,!names(remaining_hot_na_boruta) %in% c("label")])
-print(remaining_hot_na_boruta_cv) 
-
-# Histogram of the coefficients of variance
-remaining_hot_na_boruta_hist.cv <- remaining_hot_na_boruta_cv %>%
-  ggplot(aes(coef_var))+
-  geom_histogram(col = "black",
-                 fill = "navyblue",
-                 alpha = 0.7)+
-  labs(title="Histogram of Feature Volatility",
-       x = "Coefficient of variance",
-       y = "Frequency")+
-  theme_bw()
-print(remaining_hot_na_boruta_hist.cv)
-summary(remaining_hot_na_boruta_hist.cv)
-
-# Correlation matrix
-remaining_hot_na_boruta_cor <- cor(remaining_hot_na_boruta)
-corrplot(remaining_hot_na_boruta_cor, method = 'square', type = 'upper')
-
-                
-# 2 Feature reduction with PCA ------------------------------------------------
-# 2.1 Function to check if dataset is suitable for PCA
-# 2.1.1 Check if suitable for PCA
+# 1 Feature reduction with PCA ------------------------------------------------
+# 1.1 Function to check if dataset is suitable for PCA
+# 1.1.1 Check if suitable for PCA
 PCA_suitable <- function(x) {
   KMO <- EFAtools::KMO(cor(as.matrix(x)))
   bart <- EFAtools::BARTLETT(cor(as.matrix(x)), N = nrow(x))
@@ -1139,7 +827,7 @@ PCA_suitable <- function(x) {
                       "Bartlett's test of sphericity" = bart)
   return(return_list)
 }
-# 2.1 On hot deck imputed datasets
+# 1.1 On hot deck imputed datasets
 PCA_suitable(hot_na[,!names(hot_na) %in% c("label","date")])
 # KMO: 0.679
 # Bartlett p < .001
@@ -1217,6 +905,128 @@ PCA_suitable(train_irmi_na[,!names(train_irmi_na) %in% c("label","date")])
 
 PCA_suitable(train_irmi_sd[,!names(train_irmi_sd) %in% c("label","date")])
 # KMO: 0.01 > Not suitable for PCA
+
+# 2 Feature selection by BORUTA -----------------------------------------------
+
+# use Boruta algorithm on the imputed dataset
+set.seed(1234)
+
+# Build a function to perform BORUTA and obtain confirmed features------------
+
+performBoruta <- function(data) {
+  # Perform Boruta algorithm on scaled data
+  boruta_result <- Boruta(
+    label ~ .,
+    data = data,
+    pValue = 0.05,
+    maxRuns = 200,
+    doTrace = 2
+  )
+  
+  # Take a call on tentative features
+  boruta_tentative <- TentativeRoughFix(boruta_result)
+  print(boruta_tentative)
+  
+  # Confirm the importance of the features
+  selected_attributes <- getSelectedAttributes(boruta_tentative, withTentative = TRUE)
+  boruta_stats <- attStats(boruta_tentative)
+  plot(normHits ~ meanImp, col = boruta_stats$decision, data = boruta_stats)
+  
+  # Return the selected attributes
+  return(selected_attributes)
+}
+
+
+# --------------------------------------------------------------------
+
+# 9.1 Perform Boruta algorithm on scaled 'knn_na'
+selected_knn_na_boruta <- performBoruta(knn_na)
+# there are  16 confirmed important features and the rest 445 features are rejected.
+
+# 9.2 Perform Boruta algorithm on scaled 'knn_sd'
+selected_knn_sd_boruta <- performBoruta(knn_sd)
+# there are  27 confirmed important features and the rest 434 features are rejected.
+
+# 9.3 Perform Boruta algorithm on scaled 'irmi_na'
+selected_irmi_na_boruta <- performBoruta(irmi_na)
+# there are  25 confirmed important features and the rest 435 features are rejected.
+
+# 9.4 Perform Boruta algorithm on scaled 'irmi_sd'
+selected_irmi_sd_boruta <- performBoruta(irmi_sd)
+# there are  22 confirmed important features and the rest 438 features are rejected.
+
+# 9.5 Perform Boruta algorithm on unscaled 'train_knn_na'
+train_knn_na_boruta <- bind_cols(select(knn_na, label = label), train_knn_na)
+selected_train_knn_na_boruta <- performBoruta(train_knn_na_boruta)
+# there are  5 confirmed important features and the rest 455 features are rejected.
+
+# 9.6 Perform Boruta algorithm on unscaled 'train_knn_sd'
+train_knn_sd_boruta <- bind_cols(select(knn_sd, label = label), train_knn_sd)
+selected_train_knn_sd_boruta <- performBoruta(train_knn_sd_boruta)
+# there are  3 confirmed important features and the rest 457 features are rejected.
+
+# 9.7 Perform Boruta algorithm on unscaled 'train_irmi_na'
+selected_train_irmi_na_boruta <- performBoruta(train_irmi_na)
+# there are  6 confirmed important features and the rest 455 features are rejected.
+
+# 9.8 Perform Boruta algorithm on unscaled 'train_irmi_sd'
+selected_train_irmi_sd_boruta <- performBoruta(train_irmi_sd)
+# there are  2 confirmed important features and the rest 459 features are rejected.
+
+# 9.9 Perform scaling and Boruta algorithm on unscaled 'hot_na'
+hot_na_boruta <- bind_cols(select(outlier_na, label = label), hot_na_norm)
+selected_hot_na_boruta <- performBoruta(hot_na_boruta)
+# there are  13 confirmed important features and the rest 447 features are rejected.
+
+# 9.10 Perform scaling and Boruta algorithm on unscaled 'hot_sd'
+hot_sd_boruta <- bind_cols(select(outlier_sd, label = label), hot_sd_norm)
+selected_hot_sd_boruta <- performBoruta(hot_sd_boruta)
+# there are  26 confirmed important features and the rest 434 features are rejected.
+
+# 9.11 Perform scaling and Boruta algorithm on unscaled 'train_knn_outlier'
+train_knn_outlier_norm <- scale(train_knn_outlier, scale = T, center = T)
+train_knn_outlier_boruta <- bind_cols(select(hot_red, label = label), train_knn_outlier_norm)
+selected_train_knn_outlier_boruta <- performBoruta(train_knn_outlier_boruta)
+# there are  4 confirmed important features and the rest 456 features are rejected.
+
+# 9.12 Perform scaling and Boruta algorithm on unscaled 'train_hot_outlier'
+train_hot_outlier_norm <- scale(train_hot_outlier[,!names(train_hot_outlier)%in%c("label","date")], scale = T, center = T)
+train_hot_outlier_boruta <- bind_cols(select(hot_red, label = label), train_knn_outlier_norm)
+selected_train_hot_outlier_boruta <- performBoruta(train_hot_outlier_boruta)
+# there are  4 confirmed important features and the rest 456 features are rejected.
+
+
+# Overview of remaining features using statistical methods after BORUTA---------
+
+# select only features that got confirmed by boruta algorithm of the training set 
+remaining_hot_na_boruta <- hot_na[, selected_hot_na_boruta]
+print(remaining_hot_na_boruta)
+
+# bind the label back with the dataset
+remaining_hot_na_boruta <- bind_cols(select(hot_na, label = label), remaining_hot_na_boruta)
+
+# Descriptive statistics - Variance and Coefficient of Variance
+remaining_hot_na_boruta_var <- feature_var_all(remaining_hot_na_boruta[,!names(remaining_hot_na_boruta) %in% c("label")])
+print(remaining_hot_na_boruta_var) 
+remaining_hot_na_boruta_cv <- feature_cv_all(remaining_hot_na_boruta[,!names(remaining_hot_na_boruta) %in% c("label")])
+print(remaining_hot_na_boruta_cv) 
+
+# Histogram of the coefficients of variance
+remaining_hot_na_boruta_hist.cv <- remaining_hot_na_boruta_cv %>%
+  ggplot(aes(coef_var))+
+  geom_histogram(col = "black",
+                 fill = "navyblue",
+                 alpha = 0.7)+
+  labs(title="Histogram of Feature Volatility",
+       x = "Coefficient of variance",
+       y = "Frequency")+
+  theme_bw()
+print(remaining_hot_na_boruta_hist.cv)
+
+# Correlation matrix
+remaining_hot_na_boruta_cor <- cor(remaining_hot_na_boruta)
+corrplot(remaining_hot_na_boruta_cor, method = 'square', type = 'upper')
+
 
 # X Balancing
 
