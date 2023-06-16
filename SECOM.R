@@ -1,6 +1,6 @@
 # I Install/Load required packages --------------------------------------------
 if (!require("pacman")) install.packages("pacman")
-pacman::p_load(tidyverse, rlang, Hmisc, lubridate, corrplot, VIM, mice, Boruta, EFAtools, FactoMineR, psych, ROSE, smotefamily, randomForest, caret)
+pacman::p_load(tidyverse, rlang, Hmisc, lubridate, corrplot, VIM, mice, Boruta, EFAtools, FactoMineR, psych, ROSE, smotefamily, randomForest, caret, ROCR)
 
 # II Check/Set working directory ----------------------------------------------
 getwd()
