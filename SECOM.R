@@ -1618,12 +1618,26 @@ ROC <- function(model, test_data) {
 }
 roc <- ROC(hot_pca_na_k_rose_rf,test_hot_pca_na_k)
 
+
+AUC <- function(model, test_data) {
+  pred_probs <- as.numeric(predict(model, newdata = test_data, type = "response"))
+  pred <- prediction(as.numeric(pred_probs), test_hot_pca_na_k$label)
+  perf <- performance(pred, measure = "tpr", x.measure = "fpr")
+  auc_score <- as.numeric(performance(pred, measure = "auc")@y.values)
+  return(auc_score)
+}
+
+auc <- AUC(hot_pca_na_k_rose_rf, test_hot_pca_na_k)
+print(auc)
+# AUC for RF model from hot-deck, NA, PCA test set = 0.488
+
 # 2.2 On BORUTA datasets
 # 2.2.1 hot_na_boruta_rose sets = hot deck imputed datasets with BORUTA and balancing by ROSE shrunk balancing
 # Train model on hot_na_boruta_rose set by manually fitting the Random Forest
 
 # select only features that got confirmed by boruta algorithm of the training set 
 test_hot_na_boruta_data <- test_hot_na[, selected_hot_na_boruta]
+dim(test_hot_na_boruta_data)
 
 # build Random Forest model based on hot_na_boruta_rose training set
 set.seed(12345)
@@ -1643,7 +1657,11 @@ pred_rf2 <- predict(hot_na_boruta_rose_rf, newdata = test_hot_na_boruta_data, ty
 # bind the label back with the dataset
 test_hot_na_boruta_data <- bind_cols(select(test_hot_na, label = label), test_hot_na_boruta_data)
 
-# process the result of the random forest model
+# process and obtain the result of the random forest model
 result2 <- model_result(pred_rf2, test_hot_na_boruta_data$label)
 
 roc2 <- ROC(hot_na_boruta_rose_rf,test_hot_na_boruta_data)
+
+auc2 <- AUC(hot_na_boruta_rose_rf,test_hot_na_boruta_data)
+print(auc2)
+# AUC for RF model from hot-deck, NA, BORUTA test set = 0.700
