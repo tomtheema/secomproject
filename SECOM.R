@@ -82,7 +82,7 @@ bar.target.freq <-
        x = "Label",
        y = "Frequency")+
   theme_bw() +
-  scale_fill_manual(values = c("darkred", "darkgreen"))
+  _fill_manual(values = c("darkred", "darkgreen"))
 print(bar.target.freq)
 
 #2 Split data into training and test set
@@ -539,7 +539,7 @@ md.pattern(train_red[,names(train_red) %in% miss_list])
 
 # 2 Scaling -------------------------------------------------------------------
 # Because some imputation methods are distance based
-scaled <- function(x) {
+d <- function(x) {
   return((x-min(x, na.rm = T))/(max(x, na.rm = T)-min(x, na.rm = T)))
 }
 # 2.2.1 Scaling after outlier handling
@@ -687,9 +687,9 @@ PCA_suitable(train_hot_outlier[,!names(train_hot_outlier) %in% c("label","date")
 # Bartlett p < .001
 
 # Z-transformation due to skewed data and correlation matrix as input
-hot_na_norm <- scale(hot_na[,!names(hot_na)%in%c("label","date")], scale = T, center = T)
-hot_sd_norm <- scaled(hot_sd[,!names(hot_sd)%in%c("label","date")], scale = T, center = T)
-hot_outlier_norm <- scaled(train_hot_outlier[,!names(train_hot_outlier)%in%c("label","date")], scale = T, center = T)
+hot_na_norm <- scale(hot_na[,!names(hot_na)%in%c("label","date")])
+hot_sd_norm <- scaled(hot_sd[,!names(hot_sd)%in%c("label","date")])
+hot_outlier_norm <- scaled(train_hot_outlier[,!names(train_hot_outlier)%in%c("label","date")])
 
 # Scree plots
 scree_na <- VSS.scree(hot_na_norm)
@@ -808,13 +808,13 @@ selected_hot_sd_boruta <- performBoruta(hot_sd_boruta)
 # there are  26 confirmed important features and the rest 434 features are rejected.
 
 # 9.7 Perform scaling and Boruta algorithm on unscaled 'train_knn_outlier'
-train_knn_outlier_norm <- scale(train_knn_outlier, scale = T, center = T)
+train_knn_outlier_norm <- scaled(train_knn_outlier)
 train_knn_outlier_boruta <- bind_cols(select(hot_red, label = label), train_knn_outlier_norm)
 selected_train_knn_outlier_boruta <- performBoruta(train_knn_outlier_boruta)
 # there are  4 confirmed important features and the rest 456 features are rejected.
 
 # 9.8 Perform scaling and Boruta algorithm on unscaled 'train_hot_outlier'
-train_hot_outlier_norm <- scale(train_hot_outlier[,!names(train_hot_outlier)%in%c("label","date")], scale = T, center = T)
+train_hot_outlier_norm <- scaled(train_hot_outlier[,!names(train_hot_outlier)%in%c("label","date")])
 train_hot_outlier_boruta <- bind_cols(select(hot_red, label = label), train_knn_outlier_norm)
 selected_train_hot_outlier_boruta <- performBoruta(train_hot_outlier_boruta)
 # there are  4 confirmed important features and the rest 456 features are rejected.
