@@ -798,7 +798,7 @@ selected_train_knn_sd_boruta <- performBoruta(train_knn_sd_boruta)
 # there are  3 confirmed important features and the rest 457 features are rejected.
 
 # 9.5 Perform scaling and Boruta algorithm on unscaled 'hot_na'
-hot_na_boruta <- bind_cols(select(outlier_na, label = label), hot_na_norm)
+hot_na_boruta <- scaled(hot_na[,!names(hot_na) %in% c("date")])
 selected_hot_na_boruta <- performBoruta(hot_na_boruta)
 # there are  13 confirmed important features and the rest 447 features are rejected.
 
@@ -1232,7 +1232,9 @@ table(hot_sd_boruta_ADASYN$class)
 test_red <- dim_reduce(test_set)
 # Overall dimensionality reduction of 124 features
 saveRDS(test_red, "test_red.RDS")
-readRDS(test_red, "test_red.RDS")
+test_red <- readRDS("test_red.RDS")
+test_red <- test_red %>%
+  dplyr::select(-label)
 
 # 1.2 Outliers
 test_outlier <- identify_outliers(test_red)
@@ -1372,7 +1374,7 @@ result <- model_result(pred_rf1, test_hot_pca_na_k$label)
 
 ROC <- function(model, test_data) {
   pred_probs <- as.numeric(predict(model, newdata = test_data, type = "response"))
-  pred <- prediction(as.numeric(pred_probs), test_hot_pca_na_k$label)          
+  pred <- prediction(as.numeric(pred_probs), test_data[1])          
   perf <- performance(pred, measure = "tpr", x.measure = "fpr") 
   roc_curve <- plot(perf, main = "ROC Curve", lwd = 3, col = "darkred")
   return(roc_curve)
@@ -1382,7 +1384,7 @@ roc <- ROC(hot_pca_na_k_rose_rf,test_hot_pca_na_k)
 
 AUC <- function(model, test_data) {
   pred_probs <- as.numeric(predict(model, newdata = test_data, type = "response"))
-  pred <- prediction(as.numeric(pred_probs), test_hot_pca_na_k$label)
+  pred <- prediction(as.numeric(pred_probs), test_data[1])
   perf <- performance(pred, measure = "tpr", x.measure = "fpr")
   auc_score <- as.numeric(performance(pred, measure = "auc")@y.values)
   return(auc_score)
@@ -1416,7 +1418,7 @@ hot_na_boruta_rose_rf <- randomForest(data = hot_na_boruta_rose[,!names(hot_na_b
 pred_rf2 <- predict(hot_na_boruta_rose_rf, newdata = test_hot_na_boruta_data, type = "class")
 
 # bind the label back with the dataset
-test_hot_na_boruta_data <- bind_cols(select(test_hot_na, label = label), test_hot_na_boruta_data)
+test_hot_na_boruta_data <- bind_cols(select(test_set, label = label), test_hot_na_boruta_data)
 
 # process and obtain the result of the random forest model
 result2 <- model_result(pred_rf2, test_hot_na_boruta_data$label)
