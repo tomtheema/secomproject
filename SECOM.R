@@ -858,111 +858,106 @@ corrplot(remaining_hot_na_boruta_cor, method = 'square', type = 'upper')
 # In order to try every single balancing method, and visualise the results from every method
 # Then we can choose the some of the most reasonable methods to perform with other datasets.
 
-# bind the target variable back with the data to prepare for balancing
-hot_pca_na_k_bal <- bind_cols(select(hot_na, label = label), hot_na_k)
-view(hot_pca_na_k_bal)
-
 # check frequency table of target variable
-table(hot_pca_na_k_bal$label)
+table(hot_na_boruta_bal$label)
 
 # check classes distribution
-prop.table(table(hot_pca_na_k_bal$label))
+prop.table(table(hot_na_boruta_bal$label))
 
 # over sampling (majority*2 = 1170*2 = 2340)
-data_balanced_over <- ovun.sample(label~., data = hot_pca_na_k_bal, method = "over",N = 2340)$data
+data_balanced_over <- ovun.sample(label~., data = hot_na_boruta_bal, method = "over",N = 2340)$data
 table(data_balanced_over$label)
 
 # under sampling (minority*2 = 83*2 = 166)
-data_balanced_under <- ovun.sample(label~., data = hot_pca_na_k_bal, method = "under", N = 166, seed = 1)$data
+data_balanced_under <- ovun.sample(label~., data = hot_na_boruta_bal, method = "under", N = 166, seed = 1)$data
 table(data_balanced_under$label)
 
 # both over and under sampling (total = 1170+83 = 1253)
-data_balanced_both <- ovun.sample(label~., data = hot_pca_na_k_bal, method = "both", p=0.5,N=1253, seed = 1)$data
+data_balanced_both <- ovun.sample(label~., data = hot_na_boruta_bal, method = "both", p=0.5,N=1253, seed = 1)$data
 table(data_balanced_both$label)
 
 # ROSE
 # all arguments of ROSE have been set to the default values
-data_rose <- ROSE(label~., data = hot_pca_na_k_bal, seed = 1)$data
+data_rose <- ROSE(label~., data = hot_na_boruta_bal, seed = 1)$data
 table(data_rose$label)
 
 #parameters have been shrunk, by setting hmult.majo = 0.25 and hmult.mino = 0.5.
-data_rose_shrunk <- ROSE(label~., data = hot_pca_na_k_bal, seed = 1,hmult.majo = 0.25 , hmult.mino = 0.5)$data
+data_rose_shrunk <- ROSE(label~., data = hot_na_boruta_bal, seed = 1,hmult.majo = 0.25 , hmult.mino = 0.5)$data
 table(data_rose_shrunk$label)
 
 #SMOTE
-data_SMOTE <- SMOTE(X = hot_pca_na_k_bal[,-1], hot_pca_na_k_bal$label)$data
+data_SMOTE <- SMOTE(X = hot_na_boruta_bal[,-1],hot_na_boruta_bal$label)$data
 table(data_SMOTE$class)
 
 #ADASYN
-data_ADASYN<-ADAS(X=hot_pca_na_k_bal[,-1], target=hot_pca_na_k_bal$label)$data
+data_ADASYN<-ADAS(X=hot_na_boruta_bal[,-1], target=hot_na_boruta_bal$label)$data
 table(data_ADASYN$class)
-
 
 # -------- Visualising results after balancing --------------
 
 par(mfrow=c(2,2))
 #plot train data
-plot(hot_pca_na_k_bal$RC1,hot_pca_na_k_bal$RC2,main="Training Data",
-     xlim=c(-5,5), ylim=c(-5,5), col = adjustcolor(ifelse(hot_pca_na_k_bal$label == -1, "blue", "red"), alpha.f = 0.5), pch=16,xlab="", ylab="")
+plot(hot_na_boruta_bal$feature7,hot_na_boruta_bal$feature41,main="Training Data",
+     xlim=c(70,140), ylim=c(50,120), col = adjustcolor(ifelse(hot_na_boruta_bal$label == -1, "blue", "red"), alpha.f = 0.5), pch=16,xlab="", ylab="")
 legend("topleft", c("Majority class", "Minority class"), pch = 16, col = c("blue", "red"))
 
 #plot oversampled data
-plot(data_balanced_over$RC1,data_balanced_over$RC2,main="Oversampling",
-     xlim=c(-5,5), ylim=c(-5,5), col = adjustcolor(ifelse(hot_pca_na_k_bal$label == -1, "blue", "red"), alpha.f = 0.5), pch=16,xlab="", ylab="")
+plot(data_balanced_over$feature7,data_balanced_over$feature41,main="Oversampling",
+     xlim=c(70,140), ylim=c(50,120), col = adjustcolor(ifelse(hot_na_boruta_bal$label == -1, "blue", "red"), alpha.f = 0.5), pch=16,xlab="", ylab="")
 legend("topleft", c("Majority class", "Minority class"), pch = 16, col = c("blue", "red"))
 
 #plot undersampled data
-plot(data_balanced_under$RC1,data_balanced_under$RC2,main="Undersampling",
-     xlim=c(-5,5), ylim=c(-5,5), col = adjustcolor(ifelse(hot_pca_na_k_bal$label == -1, "blue", "red"), alpha.f = 0.5), pch=16,xlab="", ylab="")
+plot(data_balanced_under$feature7,data_balanced_under$feature41,main="Undersampling",
+     xlim=c(70,140), ylim=c(50,120), col = adjustcolor(ifelse(hot_na_boruta_bal$label == -1, "blue", "red"), alpha.f = 0.5), pch=16,xlab="", ylab="")
 legend("topleft", c("Majority class", "Minority class"), pch = 16, col = c("blue", "red"))
 
 #plot over and undersampled data
-plot(data_balanced_both$RC1,data_balanced_both$RC2,main="Over- and Undersampling",
-     xlim=c(-5,5), ylim=c(-5,5), col = adjustcolor(ifelse(hot_pca_na_k_bal$label == -1, "blue", "red"), alpha.f = 0.5), pch=16,xlab="", ylab="")
+plot(data_balanced_both$feature7,data_balanced_both$feature41,main="Over- and Undersampling",
+     xlim=c(70,140), ylim=c(50,120), col = adjustcolor(ifelse(hot_na_boruta_bal$label == -1, "blue", "red"), alpha.f = 0.5), pch=16,xlab="", ylab="")
 legend("topleft", c("Majority class", "Minority class"), pch = 16, col = c("blue", "red"))
 
 par(mfrow=c(2,2))
 #plot train data
-plot(hot_pca_na_k_bal$RC1,hot_pca_na_k_bal$RC2,main="Training Data",
-     xlim=c(-5,5), ylim=c(-5,5), col = adjustcolor(ifelse(hot_pca_na_k_bal$label == -1, "blue", "red"), alpha.f = 0.5), pch=16,xlab="", ylab="")
+plot(hot_na_boruta_bal$feature7,hot_na_boruta_bal$feature41,main="Training Data",
+     xlim=c(70,140), ylim=c(50,120), col = adjustcolor(ifelse(hot_na_boruta_bal$label == -1, "blue", "red"), alpha.f = 0.5), pch=16,xlab="", ylab="")
 legend("topleft", c("Majority class", "Minority class"), pch = 16, col = c("blue", "red"))
 
 #plot ROSE resampled data
-plot(data_rose$RC1,data_rose$RC2,main="ROSE resampling",
-     xlim=c(-5,5), ylim=c(-5,5), col = adjustcolor(ifelse(hot_pca_na_k_bal$label == -1, "blue", "red"), alpha.f = 0.5), pch=16,xlab="", ylab="")
+plot(data_rose$feature7,data_rose$feature41,main="ROSE resampling",
+     xlim=c(70,140), ylim=c(50,120), col = adjustcolor(ifelse(hot_na_boruta_bal$label == -1, "blue", "red"), alpha.f = 0.5), pch=16,xlab="", ylab="")
 legend("topleft", c("Majority class", "Minority class"), pch = 16, col = c("blue", "red"))
 
 #plot ROSE shrunk resampled data
-plot(data_rose_shrunk$RC1,data_rose_shrunk$RC2,main="ROSE shrunk resampling",
-     xlim=c(-5,5), ylim=c(-5,5), col = adjustcolor(ifelse(hot_pca_na_k_bal$label == -1, "blue", "red"), alpha.f = 0.5), pch=16,xlab="", ylab="")
+plot(data_rose_shrunk$feature7,data_rose_shrunk$feature41,main="ROSE shrunk resampling",
+     xlim=c(70,140), ylim=c(50,120), col = adjustcolor(ifelse(hot_na_boruta_bal$label == -1, "blue", "red"), alpha.f = 0.5), pch=16,xlab="", ylab="")
 legend("topleft", c("Majority class", "Minority class"), pch = 16, col = c("blue", "red"))
 
 #plot SMOTE resampled data
-plot(data_SMOTE$RC1,data_SMOTE$RC2,main="SMOTE resampling",
-     xlim=c(-5,5), ylim=c(-5,5), col = adjustcolor(ifelse(hot_pca_na_k_bal$label == -1, "blue", "red"), alpha.f = 0.5), pch=16,xlab="", ylab="")
+plot(data_SMOTE$feature7,data_SMOTE$feature41,main="SMOTE resampling",
+     xlim=c(70,140), ylim=c(50,120), col = adjustcolor(ifelse(hot_na_boruta_bal$label == -1, "blue", "red"), alpha.f = 0.5), pch=16,xlab="", ylab="")
 legend("topleft", c("Majority class", "Minority class"), pch = 16, col = c("blue", "red"))
 
 par(mfrow=c(2,2))
 #plot train data
-plot(hot_pca_na_k_bal$RC1,hot_pca_na_k_bal$RC2,main="Training Data",
-     xlim=c(-5,5), ylim=c(-5,5),col = adjustcolor(ifelse(hot_pca_na_k_bal$label == -1, "blue", "red"), alpha.f = 0.5), pch=16,xlab="", ylab="")
+plot(hot_na_boruta_bal$feature7,hot_na_boruta_bal$feature41,main="Training Data",
+     xlim=c(70,140), ylim=c(50,120), col = adjustcolor(ifelse(hot_na_boruta_bal$label == -1, "blue", "red"), alpha.f = 0.5), pch=16,xlab="", ylab="")
 legend("topleft", c("Majority class", "Minority class"), pch = 16, col = c("blue", "red"))
 
 #plot ROSE shrunk resampled data
-plot(data_rose_shrunk$RC1,data_rose_shrunk$RC2,main="ROSE shrunk resampling",
-     xlim=c(-5,5), ylim=c(-5,5), col = adjustcolor(ifelse(hot_pca_na_k_bal$label == -1, "blue", "red"), alpha.f = 0.5), pch=16,xlab="", ylab="")
+plot(data_rose_shrunk$feature7,data_rose_shrunk$feature41,main="ROSE shrunk resampling",
+     xlim=c(70,140), ylim=c(50,120), col = adjustcolor(ifelse(hot_na_boruta_bal$label == -1, "blue", "red"), alpha.f = 0.5), pch=16,xlab="", ylab="")
 legend("topleft", c("Majority class", "Minority class"), pch = 16, col = c("blue", "red"))
 
 #plot SMOTE resampled data
-plot(data_SMOTE$RC1,data_SMOTE$RC2,main="SMOTE resampling",
-     xlim=c(-5,5), ylim=c(-5,5), col = adjustcolor(ifelse(hot_pca_na_k_bal$label == -1, "blue", "red"), alpha.f = 0.5), pch=16,xlab="", ylab="")
+plot(data_SMOTE$feature7,data_SMOTE$feature41,main="SMOTE resampling",
+     xlim=c(70,140), ylim=c(50,120), col = adjustcolor(ifelse(hot_na_boruta_bal$label == -1, "blue", "red"), alpha.f = 0.5), pch=16,xlab="", ylab="")
 legend("topleft", c("Majority class", "Minority class"), pch = 16, col = c("blue", "red"))
 
 #plot ADASYN resampled data
-plot(data_ADASYN$RC1,data_ADASYN$RC2,main="ADASYN resampling",
-     xlim=c(-5,5), ylim=c(-5,5), col = adjustcolor(ifelse(hot_pca_na_k_bal$label == -1, "blue", "red"), alpha.f = 0.5), pch=16,xlab="", ylab="")
+plot(data_ADASYN$feature7,data_ADASYN$feature41,main="ADASYN resampling",
+     xlim=c(70,140), ylim=c(50,120), col = adjustcolor(ifelse(hot_na_boruta_bal$label == -1, "blue", "red"), alpha.f = 0.5), pch=16,xlab="", ylab="")
 legend("topleft", c("Majority class", "Minority class"), pch = 16, col = c("blue", "red"))
-
+                
 # From visualising the results after balancing method in the plots above 
 # It can seen that there are only 5 reasonable balancing methods that give us enough data to model
 # The other methods not chosen give too little data to work with.
