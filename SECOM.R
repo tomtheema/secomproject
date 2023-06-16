@@ -436,121 +436,6 @@ train_red <- dim_reduce(train_set)
 saveRDS(train_red, "train_red.RDS")
 train_red <- readRDS("train_red.RDS")
 
-# 4 Based on correlation
-feature_corr_all(train_red[,!names(train_red) %in% c("label","date")])
-# 8 perfect correlations
-# 1190 strong correlations
-
-dim_red_corr <- function(x) {
-  corr_mat <- rcorr(as.matrix(x))
-  # Extract correlation coefficients
-  df_r <- corr_mat$r %>%
-    as.data.frame() %>% 
-    rownames_to_column("features1") %>%
-    as_tibble() %>% 
-    pivot_longer(cols = -features1, names_to = "features2", 
-                 values_to = "corr")
-  # Extract p-values
-  df_p <- corr_mat$P %>%
-    as.data.frame() %>% 
-    rownames_to_column("features1") %>%
-    as_tibble() %>% 
-    pivot_longer(cols = -features1, names_to = "features2", 
-                 values_to = "p.val")
-  # Merge correlation coefficients and p-values into one table
-  df_merge <- df_r %>%
-    left_join(df_p)
-  
-  # Select significant correlation coefficients
-  p = 0.05
-  corr_mat_sig <- subset(df_merge, p.val <= p) %>%
-    filter(corr >= 0.8 | corr <= -0.8) %>%
-    arrange(desc(corr))
-  
-  # Extract unique features with significant correlations
-  corr_mat_sig_tar <- corr_mat_sig %>%
-    dplyr::select(features1) %>%
-    distinct() %>%
-    pull(as.vector(features1))
-  
-  #Extract target variable
-  target <- x[1]
-  
-  # Create dataset with only target variable and features with significant correlations
-  x2 <- x %>%
-    dplyr::select(all_of(corr_mat_sig_tar))
-  x2 <- as_tibble(cbind(target,x2))
-  
-  # Create empty data frame for the loop
-  corr_test_results <- data_frame(feature = character(),
-                                  p.value = numeric(),
-                                  corr.value = numeric())
-  
-  # Loop through the dataset and calculate the correlation of each feature with the target variable
-  for (col in names(x)) {
-    target <- as.vector(x$label)
-    predictor <- sign(as.vector(x[[col]]))*log((abs(as.vector(x[[col]])+1)))
-    corr_test <- cor.test(target,predictor, method = "pearson")
-    p.val <- corr_test$p.value
-    corr.val <- corr_test$estimate
-    corr_test_results <- rbind(corr_test_results, data_frame(feature = col,
-                                                             p.value = corr_test$p.value,
-                                                             corr.value = corr_test$estimate))
-  }
-  corr_test_results
-  
-  # Number of features with a significant correlation to the target variable
-  corr_test_results %>%
-    filter(p.value < p) %>%
-    nrow()
-  # 55 out of 374 (14.7%)
-  
-  # Create empty vector for features which are going to be eliminated
-  feature_red <- c()
-  
-  # Loop through each highly correlated pair and check if each feature in that pair has a 
-  # significant correlation with the target variable and if so, pick the feature which is
-  # more strongly correlated to the target variable
-  for (row in 1:nrow(corr_mat_sig)) {
-    # Extract first feature of correlation pair
-    feature_1 <- corr_mat_sig %>%
-      slice(row,) %>%
-      pull(as.vector(features1))
-    # Extract second feature of correlation pair
-    feature_2 <- corr_mat_sig %>%
-      slice(row,) %>%
-      pull(as.vector(features2))
-    # Extract results for first feature of correlation pair
-    check_feature_1 <- corr_test_results %>%
-      filter(feature == feature_1)
-    # Extract results from second feature of correlation pair
-    check_feature_2 <- corr_test_results %>%
-      filter(feature == feature_2)
-    
-    # Conditions for choosing which feature to eliminate
-    # If one or both features do not have a significant correlation with the target variable
-    # If one feature has a stronger correlation to the target variable
-    if ((check_feature_1$p.value < p & check_feature_2$p.value < p) & check_feature_1$corr.value > check_feature_2$corr.value) {
-      feature_red <- c(feature_red, feature_2)
-    } else if ((check_feature_1$p.value < p & check_feature_2$p.value < p) & check_feature_1$corr.value < check_feature_2$corr.value) {
-      feature_red <- c(feature_red, feature_1)
-    }
-feature_red
-  }
-  feature_red
-  x <- x %>%
-    dplyr::select(-all_of(unique(feature_red)))
-  x
-}
-train_red2 <- dim_red_corr(select_if(train_red, is.numeric))
-# 37 features are removed
-
-# Add date back to reduced dataset
-train_red2 <- as_tibble(bind_cols(label = train_red2$label, date = train_red$date, train_red2[-1]))
-
-saveRDS(train_red2, "train_red2.RDS")
-train_red2 <- readRDS("train_red2.RDS")
-
 
 # VII Outliers identification and handling ------------------------------------
 # 1 Outlier identification ----------------------------------------------------
@@ -655,10 +540,7 @@ md.pattern(train_red[,names(train_red) %in% miss_list])
 # 2 Scaling -------------------------------------------------------------------
 # Because some imputation methods are distance based
 scaled <- function(x) {
-  scaled <- scale(x, scale = T, center = T)
-  scaled <- as.tibble(scaled) %>%
-    mutate(across(everything(), as.numeric))
-  return(scaled)
+  return((x-min(x, na.rm = T))/(max(x, na.rm = T)-min(x, na.rm = T)))
 }
 # 2.2.1 Scaling after outlier handling
 scaled_na <- scaled(outlier_na[,!names(outlier_na) %in% c("label","date")])
@@ -683,20 +565,23 @@ sum(is.na(hot_sd))
 # Check effects of imputation
 # For NA set
 hot_na_var <- feature_var_all(hot_na)
+hot_na_corr <- feature_corr_all(hot_na[,!names(hot_na) %in% c("label","date")])
 # For SD set
-hot_sd_var <- feature_var_all(hot_sd)
+hot_sd_var <- feature_var_all(hot_sd[,!names(hot_sd) %in% c("label","date")])
+hot_sd_corr <- feature_corr_all(hot_sd)
 
 # 3.1.2 Imputation before outlier hanndling
 hot_red <- hotdeck(train_red, impNA = T, imp_var = F)
 sum(is.na(hot_red))
 
-# Check effects
-train_red_hot_var <- feature_var_all(hot_red)
-
 # Outlier handling
 train_hot_outlier <- hot_red %>%
   mutate(across(where(is.numeric),~ outlier_replace(.x, method = "SD")))
 as_tibble(train_hot_outlier)
+
+# Check effects
+train_hot_outlier_var <- feature_var_all(train_hot_outlier)
+train_hot_outlier_corr <- feature_corr_all(train_hot_outlier[,!names(train_hot_na) %in% c("label","date")])
 
 # 3.2 kNN method --------------------------------------------------------------
 # Non-parametric, makes no assumptions about the data distribution
@@ -719,22 +604,24 @@ sum(is.na(knn_sd))
 # Check effects of imputation
 # Reverse scaling to check the effects of imputation 
 reverse_scaling <- function(old_data, scaled_data) {
-  mu <- sapply(old_data, mean, na.rm = T)
-  s <- sapply(old_data, sd, na.rm = T)
-  reverse_scaled <- (scaled_data*s)+mu
+  min_o <- min(old_data, na.rm = T)
+  max_o <- max(old_data, na.rm = T)
+  reverse_scaled <- (scaled_data*(max_o-min_o))+min_o
   return(reverse_scaled)
 }
 # For NA set
 train_knn_na <- reverse_scaling(outlier_na[,!names(outlier_na) %in% c("label","date")], knn_na[,!names(outlier_na) %in% c("label","date")])
 train_knn_na <- as_tibble(bind_cols(knn_na[,names(knn_na) %in% c("label","date")],train_knn_na))
-# Huge increase in variance by setting k = 5
+# Check effects
 train_knn_na_var <- feature_var_all(train_knn_na)
+train_knn_na_corr <- feature_corr_all(train_knn_na[,!names(train_knn_na) %in% c("label","date")])
 
 # For SD set
 train_knn_sd <- reverse_scaling(outlier_sd[,!names(outlier_sd) %in% c("label","date")], knn_sd[,!names(outlier_sd) %in% c("label","date")])
 train_knn_sd <- as_tibble(bind_cols(knn_sd[,names(knn_sd) %in% c("label","date")],train_knn_sd))
-# Increase in variance not that significant for k = 5 in comparison to _na set
+# Check effects
 train_knn_sd_var <- feature_var_all(train_knn_sd)
+train_knn_sd_corr <- feature_corr_all(train_knn_sd[,!names(train_knn_sd) %in% c("label","date")])
 
 # Save imputation files as RDS to reduce processing time
 saveRDS(train_knn_na, "train_knn_na.RDS")
@@ -752,59 +639,18 @@ sum(is.na(knn_train_red))
 
 # Reverse scaling
 train_red_knn <- reverse_scaling(train_red[,!names(train_red) %in% c("label","date")], knn_train_red[,!names(knn_train_red) %in% c("label","date")])
-# Increase in variance for k =5 in comparison to _na set
-train_red_knn_var <- feature_var_all(train_red_knn)
 
 # Outlier handling with 4S
 train_knn_outlier <- train_red_knn %>%
   mutate(across(where(is.numeric),~ outlier_replace(.x, method = "SD")))
 train_knn_outllier <- as_tibble(bind_cols(train_red[,names(train_red) %in% c("label","date")], train_red_knn))
 
+# Check effects
+train_knn_outlier_var <- feature_var_all(train_knn_outlier)
+train_knn_outlier_corr <- feature_corr_all(train_knn_outlier[,!names(train_knn_outlier) %in% c("label","date")])
+
 saveRDS(train_knn_outlier, "train_knn_outlier.RDS")
 train_knn_outlier <- readRDS("train_knn_outlier.RDS")
-
-# 3.3 Iterative robust model-based imputation (irmi) --------------------------
-# Option to be robust and handle outliers, can therefore be used before or after outlier handling
-# 3.3.1 Single imputation after outlier handling ------------------------------
-# Computation time ~ 20 mins
-# irmi function can't process datetimes 
-irmi_na <- irmi(bind_cols(outlier_na[,names(outlier_na) %in% c("label")],scaled_na),
-                maxit = 5,
-                robust = F,
-                init.method = "kNN",
-                imp_var = F)
-as_tibble(irmi_na)
-sum(is.na(irmi_na))
-
-irmi_sd <- irmi(bind_cols(outlier_sd[,names(outlier_sd) %in% c("label")],scaled_sd),
-                maxit = 5,
-                robust = F,
-                init.method = "kNN",
-                imp_var = F)
-as_tibble(irmi_na)
-sum(is.na(irmi_na))
-
-# Check effects of imputation
-# Reverse scaling to check the effects of imputation 
-# For NA set
-train_irmi_na <- reverse_scaling(outlier_na[,names(outlier_na) %in% c("label","date")],irmi_na[,!names(irmi_na) %in% c("label")])
-train_irmi_na <- as_tibble(bind_cols(outlier_na[,names(outlier_na) %in% c("label","date")],train_irmi_na))
-
-saveRDS(train_irmi_na, "train_irmi_na.RDS")
-train_irmi_na <- readRDS("train_irmi_na.RDS")
-
-# Huge increase is volatility
-train_irmi_na_var <- feature_var_all(train_irmi_na)
-
-# For SA set
-train_irmi_sd <- reverse_scaling(outlier_sd[,names(outlier_sd) %in% c("label","date")],irmi_sd[,!names(irmi_sd) %in% c("label")])
-train_irmi_sd <- as_tibble(bind_cols(outlier_sd[,names(outlier_sd) %in% c("label","date")],train_irmi_sd))
-
-saveRDS(train_irmi_sd, "train_irmi_sd.RDS")
-train_irmi_sd <- readRDS("train_irmi_sd.RDS")
-
-# Small increase in volatility
-train_irmi_sd_var <- feature_var_all(train_irmi_sd)
 
 # 3.3.2 Single imputation before outlier handling -----------------------------
 # Use robust methods to suppress influence of outliers in the dataset
@@ -840,11 +686,10 @@ PCA_suitable(train_hot_outlier[,!names(train_hot_outlier) %in% c("label","date")
 # KMO: 0.689
 # Bartlett p < .001
 
-# Normalize data
 # Z-transformation due to skewed data and correlation matrix as input
-hot_na_norm <- scaled(hot_na[,!names(hot_na)%in%c("label","date")])
-hot_sd_norm <- scaled(hot_sd[,!names(hot_sd)%in%c("label","date")])
-hot_outlier_norm <- scaled(train_hot_outlier[,!names(train_hot_outlier)%in%c("label","date")])
+hot_na_norm <- scale(hot_na[,!names(hot_na)%in%c("label","date")], scale = T, center = T)
+hot_sd_norm <- scaled(hot_sd[,!names(hot_sd)%in%c("label","date")], scale = T, center = T)
+hot_outlier_norm <- scaled(train_hot_outlier[,!names(train_hot_outlier)%in%c("label","date")], scale = T, center = T)
 
 # Scree plots
 scree_na <- VSS.scree(hot_na_norm)
@@ -890,21 +735,16 @@ hot_outlier_var <- PCA_extract(hot_outlier_norm, "Variance")
 # 2.2 On kNN imputed datasets knn_na, knn_sd and knn_train_red 
 # 2.2.1 Kaiser-Meyer-Olkin (KMO) factor adequacy
 PCA_suitable(train_knn_na[,!names(train_knn_na) %in% c("label","date")])
-# KMO: 0.42 > Not suitable for PCA
+# KMO: 0.68 and p.valie < 0.01
 
 PCA_suitable(train_knn_sd[,!names(train_knn_sd) %in% c("label","date")])
-# KMO: 0.415 > Not suitable for PCA
+# KMO: 0.695 and p.value < 0.01
 
 PCA_suitable(train_knn_outlier[,!names(train_knn_outlier) %in% c("label","date")])
-# KMO: 0.406 > Not suitable for PCA
+# KMO: 0.70 and p.value < 0.01
 
-# 2.3 On irmi imputed datasets 
-# 2.3.1 Kaiser-Meyer-Olkin (KMO) factor adequacy
-PCA_suitable(train_irmi_na[,!names(train_irmi_na) %in% c("label","date")])
-# KMO: 0.42 > Not suitable for PCA
+# Transformation and PCA to be done
 
-PCA_suitable(train_irmi_sd[,!names(train_irmi_sd) %in% c("label","date")])
-# KMO: 0.01 > Not suitable for PCA
 
 # 2 Feature selection by BORUTA -----------------------------------------------
 
@@ -947,49 +787,33 @@ selected_knn_na_boruta <- performBoruta(knn_na)
 selected_knn_sd_boruta <- performBoruta(knn_sd)
 # there are  27 confirmed important features and the rest 434 features are rejected.
 
-# 9.3 Perform Boruta algorithm on scaled 'irmi_na'
-selected_irmi_na_boruta <- performBoruta(irmi_na)
-# there are  25 confirmed important features and the rest 435 features are rejected.
-
-# 9.4 Perform Boruta algorithm on scaled 'irmi_sd'
-selected_irmi_sd_boruta <- performBoruta(irmi_sd)
-# there are  22 confirmed important features and the rest 438 features are rejected.
-
-# 9.5 Perform Boruta algorithm on unscaled 'train_knn_na'
+# 9.3 Perform Boruta algorithm on unscaled 'train_knn_na'
 train_knn_na_boruta <- bind_cols(select(knn_na, label = label), train_knn_na)
 selected_train_knn_na_boruta <- performBoruta(train_knn_na_boruta)
 # there are  5 confirmed important features and the rest 455 features are rejected.
 
-# 9.6 Perform Boruta algorithm on unscaled 'train_knn_sd'
+# 9.4 Perform Boruta algorithm on unscaled 'train_knn_sd'
 train_knn_sd_boruta <- bind_cols(select(knn_sd, label = label), train_knn_sd)
 selected_train_knn_sd_boruta <- performBoruta(train_knn_sd_boruta)
 # there are  3 confirmed important features and the rest 457 features are rejected.
 
-# 9.7 Perform Boruta algorithm on unscaled 'train_irmi_na'
-selected_train_irmi_na_boruta <- performBoruta(train_irmi_na)
-# there are  6 confirmed important features and the rest 455 features are rejected.
-
-# 9.8 Perform Boruta algorithm on unscaled 'train_irmi_sd'
-selected_train_irmi_sd_boruta <- performBoruta(train_irmi_sd)
-# there are  2 confirmed important features and the rest 459 features are rejected.
-
-# 9.9 Perform scaling and Boruta algorithm on unscaled 'hot_na'
+# 9.5 Perform scaling and Boruta algorithm on unscaled 'hot_na'
 hot_na_boruta <- bind_cols(select(outlier_na, label = label), hot_na_norm)
 selected_hot_na_boruta <- performBoruta(hot_na_boruta)
 # there are  13 confirmed important features and the rest 447 features are rejected.
 
-# 9.10 Perform scaling and Boruta algorithm on unscaled 'hot_sd'
+# 9.6 Perform scaling and Boruta algorithm on unscaled 'hot_sd'
 hot_sd_boruta <- bind_cols(select(outlier_sd, label = label), hot_sd_norm)
 selected_hot_sd_boruta <- performBoruta(hot_sd_boruta)
 # there are  26 confirmed important features and the rest 434 features are rejected.
 
-# 9.11 Perform scaling and Boruta algorithm on unscaled 'train_knn_outlier'
+# 9.7 Perform scaling and Boruta algorithm on unscaled 'train_knn_outlier'
 train_knn_outlier_norm <- scale(train_knn_outlier, scale = T, center = T)
 train_knn_outlier_boruta <- bind_cols(select(hot_red, label = label), train_knn_outlier_norm)
 selected_train_knn_outlier_boruta <- performBoruta(train_knn_outlier_boruta)
 # there are  4 confirmed important features and the rest 456 features are rejected.
 
-# 9.12 Perform scaling and Boruta algorithm on unscaled 'train_hot_outlier'
+# 9.8 Perform scaling and Boruta algorithm on unscaled 'train_hot_outlier'
 train_hot_outlier_norm <- scale(train_hot_outlier[,!names(train_hot_outlier)%in%c("label","date")], scale = T, center = T)
 train_hot_outlier_boruta <- bind_cols(select(hot_red, label = label), train_knn_outlier_norm)
 selected_train_hot_outlier_boruta <- performBoruta(train_hot_outlier_boruta)
@@ -1350,63 +1174,7 @@ table(knn_sd_boruta_SMOTE$class)
 knn_sd_boruta_ADASYN<-ADAS(X=knn_sd_boruta_bal[,-1], target=knn_sd_boruta_bal$label)$data
 table(knn_sd_boruta_ADASYN$class)
 
-#10.9 irmi_na_boruta
-
-# select only features that got confirmed by boruta from the training set
-irmi_na_boruta_data <- irmi_na[, selected_irmi_na_boruta]
-
-# Prepare for balancing by binding the target variable back with the data
-irmi_na_boruta_bal <- bind_cols(select(irmi_na, label = label), irmi_na_boruta_data)
-
-# over sampling 
-irmi_na_boruta_over <- ovun.sample(label~., data = irmi_na_boruta_bal, method = "over",N = 2340)$data
-table(irmi_na_boruta_over$label)
-
-# over and under sampling
-irmi_na_boruta_both <- ovun.sample(label~., data = irmi_na_boruta_bal, method = "both", p=0.5,N=1253, seed = 1)$data
-table(irmi_na_boruta_both$label)
-
-#ROSE shrunk
-irmi_na_boruta_rose <- ROSE(label~., data = irmi_na_boruta_bal, seed = 1,hmult.majo = 0.25 , hmult.mino = 0.5)$data
-table(irmi_na_boruta_rose$label)
-
-#SMOTE
-irmi_na_boruta_SMOTE <- SMOTE(X = irmi_na_boruta_bal[,-1], irmi_na_boruta_bal$label)$data
-table(irmi_na_boruta_SMOTE$class)
-
-#ADASYN
-irmi_na_boruta_ADASYN<-ADAS(X=irmi_na_boruta_bal[,-1], target=irmi_na_boruta_bal$label)$data
-table(irmi_na_boruta_ADASYN$class)
-
-#10.10 irmi_sd_boruta
-
-# select only features that got confirmed by boruta from the training set
-irmi_sd_boruta_data <- irmi_sd[, selected_irmi_sd_boruta]
-
-# Prepare for balancing by binding the target variable back with the data
-irmi_sd_boruta_bal <- bind_cols(select(irmi_sd, label = label), irmi_sd_boruta_data)
-
-# over sampling 
-irmi_sd_boruta_over <- ovun.sample(label~., data = irmi_sd_boruta_bal, method = "over",N = 2340)$data
-table(irmi_sd_boruta_over$label)
-
-# over and under sampling
-irmi_sd_boruta_both <- ovun.sample(label~., data = irmi_sd_boruta_bal, method = "both", p=0.5,N=1253, seed = 1)$data
-table(irmi_sd_boruta_both$label)
-
-#ROSE shrunk
-irmi_sd_boruta_rose <- ROSE(label~., data = irmi_sd_boruta_bal, seed = 1,hmult.majo = 0.25 , hmult.mino = 0.5)$data
-table(irmi_sd_boruta_rose$label)
-
-#SMOTE
-irmi_sd_boruta_SMOTE <- SMOTE(X = irmi_sd_boruta_bal[,-1], irmi_sd_boruta_bal$label)$data
-table(irmi_sd_boruta_SMOTE$class)
-
-#ADASYN
-irmi_sd_boruta_ADASYN<-ADAS(X=irmi_sd_boruta_bal[,-1], target=irmi_sd_boruta_bal$label)$data
-table(irmi_sd_boruta_ADASYN$class)
-
-#10.11 hot_na_boruta
+#10.9 hot_na_boruta
 
 # select only features that got confirmed by boruta from the training set
 hot_na_boruta_data <- hot_na[, selected_hot_na_boruta]
@@ -1434,7 +1202,7 @@ table(hot_na_boruta_SMOTE$class)
 hot_na_boruta_ADASYN<-ADAS(X=hot_na_boruta_bal[,-1], target=hot_na_boruta_bal$label)$data
 table(hot_na_boruta_ADASYN$class)
 
-#10.12 hot_sd_boruta
+#10.10 hot_sd_boruta
 
 # select only features that got confirmed by boruta from the training set
 hot_sd_boruta_data <- hot_sd[, selected_hot_sd_boruta]
@@ -1503,9 +1271,7 @@ test_hot_outlier <- test_hot_outlier %>%
   mutate(across(where(is.numeric),~ outlier_replace(., method = "SD")))
 as.tibble(test_hot_outlier)
 
-# 1.3.2 kNN
-
-# 1.3.3 irmi
+# 1.3.2 kNN TBD
 
 # 1.4 PCA
 PCA_extract_test <- function(x, nf) {
