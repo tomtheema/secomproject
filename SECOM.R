@@ -82,7 +82,7 @@ bar.target.freq <-
        x = "Label",
        y = "Frequency")+
   theme_bw() +
-  _fill_manual(values = c("darkred", "darkgreen"))
+  scale_fill_manual(values = c("darkred", "darkgreen"))
 print(bar.target.freq)
 
 #2 Split data into training and test set
@@ -539,7 +539,7 @@ md.pattern(train_red[,names(train_red) %in% miss_list])
 
 # 2 Scaling -------------------------------------------------------------------
 # Because some imputation methods are distance based
-d <- function(x) {
+scaled <- function(x) {
   return((x-min(x, na.rm = T))/(max(x, na.rm = T)-min(x, na.rm = T)))
 }
 # 2.2.1 Scaling after outlier handling
