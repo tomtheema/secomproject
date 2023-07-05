@@ -594,12 +594,16 @@ knn_na <- kNN(bind_cols(outlier_na[,names(outlier_na) %in% c("label","date")],sc
               k = 5, impNA = T, imp_var = F)
 as_tibble(knn_na)
 sum(is.na(knn_na))
+saveRDS(knn_na, "knn_na.RDS")
+knn_na <- readRDS("knn_na.RDS")
 
 # Merge label and date back together with the rest of the data for the imputation
 knn_sd <- kNN(bind_cols(outlier_sd[,names(outlier_sd) %in% c("label","date")],scaled_sd), 
               k = 5, impNA = T, imp_var = F)
 as_tibble(knn_sd)
 sum(is.na(knn_sd))
+saveRDS(knn_sd, "knn_sd.RDS")
+knn_sd <- readRDS("knn_sd.RDS")
 
 # Check effects of imputation
 # Reverse scaling to check the effects of imputation 
@@ -637,13 +641,15 @@ knn_train_red <- kNN(bind_cols(train_red[,names(train_red) %in% c("label","date"
 as_tibble(knn_train_red)
 sum(is.na(knn_train_red))
 
+saveRDS(knn_train_red, "knn_train_red.RDS")
+knn_train_red <- readRDS("knn_train_red.RDS")
 # Reverse scaling
 train_red_knn <- reverse_scaling(train_red[,!names(train_red) %in% c("label","date")], knn_train_red[,!names(knn_train_red) %in% c("label","date")])
 
 # Outlier handling with 4S
 train_knn_outlier <- train_red_knn %>%
   mutate(across(where(is.numeric),~ outlier_replace(.x, method = "SD")))
-train_knn_outllier <- as_tibble(bind_cols(train_red[,names(train_red) %in% c("label","date")], train_red_knn))
+train_knn_outlier <- as_tibble(bind_cols(train_red[,names(train_red) %in% c("label","date")], train_red_knn))
 
 # Check effects
 train_knn_outlier_var <- feature_var_all(train_knn_outlier)
@@ -651,6 +657,7 @@ train_knn_outlier_corr <- feature_corr_all(train_knn_outlier[,!names(train_knn_o
 
 saveRDS(train_knn_outlier, "train_knn_outlier.RDS")
 train_knn_outlier <- readRDS("train_knn_outlier.RDS")
+
 
 # 3.3.2 Single imputation before outlier handling -----------------------------
 # Use robust methods to suppress influence of outliers in the dataset
@@ -666,81 +673,81 @@ train_knn_outlier <- readRDS("train_knn_outlier.RDS")
 # 1 Feature reduction with PCA ------------------------------------------------
 # 1.1 Function to check if dataset is suitable for PCA
 # 1.1.1 Check if suitable for PCA
-PCA_suitable <- function(x) {
-  KMO <- EFAtools::KMO(cor(as.matrix(x)))
-  bart <- EFAtools::BARTLETT(cor(as.matrix(x)), N = nrow(x))
-  return_list <- list("Kaiser-Meyer-Olkin (KMO) factor adequacy" = KMO$KMO,
-                      "Bartlett's test of sphericity" = bart)
-  return(return_list)
-}
-# 1.1 On hot deck imputed datasets
-PCA_suitable(hot_na[,!names(hot_na) %in% c("label","date")])
-# KMO: 0.679
-# Bartlett p < .001
-
-PCA_suitable(hot_sd[,!names(hot_sd) %in% c("label","date")])
-# KMO: 0.690
-# Bartlett p < .001
-
-PCA_suitable(train_hot_outlier[,!names(train_hot_outlier) %in% c("label","date")])
-# KMO: 0.689
-# Bartlett p < .001
-
-# Z-transformation due to skewed data and correlation matrix as input
-hot_na_norm <- scale(hot_na[,!names(hot_na)%in%c("label","date")])
-hot_sd_norm <- scaled(hot_sd[,!names(hot_sd)%in%c("label","date")])
-hot_outlier_norm <- scaled(train_hot_outlier[,!names(train_hot_outlier)%in%c("label","date")])
-
-# Scree plots
-scree_na <- VSS.scree(hot_na_norm)
-scree_sd <- VSS.scree(hot_sd_norm)
-scree_outlier <- VSS.scree(hot_outlier_norm)
-
-# Extraction
-PCA_extract <- function(x, method = c("Kaiser", "Variance")) {
-  pca <- PCA(x, graph = F)
-  eigen <- as.tibble(pca$eig)
-  # Set to 80 to avoid overfitting
-  if (method == "Variance") {
-    nf <- eigen %>%
-      rename(pov = 2, cpov = 3) %>%
-      filter(cpov <= 80) %>%
-      nrow()
-  } else {
-    nf <- eigen %>%
-      filter(eigenvalue >= 1) %>%
-      nrow()
-  }
-  pca_extract <- principal(x, nfactors = nf, covar = F, scores = T)
-  as.tibble(pca_extract$scores)
-}
-# NA_set
-# Kaiser criterion
-hot_na_k <- PCA_extract(hot_na_norm, "Kaiser")
-# Variance of at least 90%
-hot_na_var <- PCA_extract(hot_na_norm, "Variance")
-
-# SD set
-# Kaiser criterion
-hot_sd_k <- PCA_extract(hot_sd_norm, "Kaiser")
-# Variance of at least 90%
-hot_sd_var <- PCA_extract(hot_sd_norm, "Variance")
-
-# Reduced training set
-# Kaiser criterion
-hot_outlier_k <- PCA_extract(hot_outlier_norm, "Kaiser")
-# Variance of at least 90%
-hot_outlier_var <- PCA_extract(hot_outlier_norm, "Variance")
-
-# 2.2 On kNN imputed datasets knn_na, knn_sd and knn_train_red 
-# 2.2.1 Kaiser-Meyer-Olkin (KMO) factor adequacy
-PCA_suitable(train_knn_na[,!names(train_knn_na) %in% c("label","date")])
-# KMO: 0.68 and p.valie < 0.01
-
-PCA_suitable(train_knn_sd[,!names(train_knn_sd) %in% c("label","date")])
-# KMO: 0.695 and p.value < 0.01
-
-PCA_suitable(train_knn_outlier[,!names(train_knn_outlier) %in% c("label","date")])
+# PCA_suitable <- function(x) {
+#   KMO <- EFAtools::KMO(cor(as.matrix(x)))
+#   bart <- EFAtools::BARTLETT(cor(as.matrix(x)), N = nrow(x))
+#   return_list <- list("Kaiser-Meyer-Olkin (KMO) factor adequacy" = KMO$KMO,
+#                       "Bartlett's test of sphericity" = bart)
+#   return(return_list)
+# }
+# # 1.1 On hot deck imputed datasets
+# PCA_suitable(hot_na[,!names(hot_na) %in% c("label","date")])
+# # KMO: 0.679
+# # Bartlett p < .001
+# 
+# PCA_suitable(hot_sd[,!names(hot_sd) %in% c("label","date")])
+# # KMO: 0.690
+# # Bartlett p < .001
+# 
+# PCA_suitable(train_hot_outlier[,!names(train_hot_outlier) %in% c("label","date")])
+# # KMO: 0.689
+# # Bartlett p < .001
+# 
+# # Z-transformation due to skewed data and correlation matrix as input
+# hot_na_norm <- scale(hot_na[,!names(hot_na)%in%c("label","date")], scale = T, center = T)
+# hot_sd_norm <- scaled(hot_sd[,!names(hot_sd)%in%c("label","date")], scale = T, center = T)
+# hot_outlier_norm <- scaled(train_hot_outlier[,!names(train_hot_outlier)%in%c("label","date")], scale = T, center = T)
+# 
+# # Scree plots
+# scree_na <- VSS.scree(hot_na_norm)
+# scree_sd <- VSS.scree(hot_sd_norm)
+# scree_outlier <- VSS.scree(hot_outlier_norm)
+# 
+# # Extraction
+# PCA_extract <- function(x, method = c("Kaiser", "Variance")) {
+#   pca <- PCA(x, graph = F)
+#   eigen <- as.tibble(pca$eig)
+#   # Set to 80 to avoid overfitting
+#   if (method == "Variance") {
+#     nf <- eigen %>%
+#       rename(pov = 2, cpov = 3) %>%
+#       filter(cpov <= 80) %>%
+#       nrow()
+#   } else {
+#     nf <- eigen %>%
+#       filter(eigenvalue >= 1) %>%
+#       nrow()
+#   }
+#   pca_extract <- principal(x, nfactors = nf, covar = F, scores = T)
+#   as.tibble(pca_extract$scores)
+# }
+# # NA_set
+# # Kaiser criterion
+# hot_na_k <- PCA_extract(hot_na_norm, "Kaiser")
+# # Variance of at least 90%
+# hot_na_var <- PCA_extract(hot_na_norm, "Variance")
+# 
+# # SD set
+# # Kaiser criterion
+# hot_sd_k <- PCA_extract(hot_sd_norm, "Kaiser")
+# # Variance of at least 90%
+# hot_sd_var <- PCA_extract(hot_sd_norm, "Variance")
+# 
+# # Reduced training set
+# # Kaiser criterion
+# hot_outlier_k <- PCA_extract(hot_outlier_norm, "Kaiser")
+# # Variance of at least 90%
+# hot_outlier_var <- PCA_extract(hot_outlier_norm, "Variance")
+# 
+# # 2.2 On kNN imputed datasets knn_na, knn_sd and knn_train_red 
+# # 2.2.1 Kaiser-Meyer-Olkin (KMO) factor adequacy
+# PCA_suitable(train_knn_na[,!names(train_knn_na) %in% c("label","date")])
+# # KMO: 0.68 and p.valie < 0.01
+# 
+# PCA_suitable(train_knn_sd[,!names(train_knn_sd) %in% c("label","date")])
+# # KMO: 0.695 and p.value < 0.01
+# 
+# PCA_suitable(train_knn_outlier[,!names(train_knn_outlier) %in% c("label","date")])
 # KMO: 0.70 and p.value < 0.01
 
 # Transformation and PCA to be done
@@ -749,7 +756,7 @@ PCA_suitable(train_knn_outlier[,!names(train_knn_outlier) %in% c("label","date")
 # 2 Feature selection by BORUTA -----------------------------------------------
 
 # use Boruta algorithm on the imputed dataset
-set.seed(1234)
+set.seed(123456789)
 
 # Build a function to perform BORUTA and obtain confirmed features------------
 
@@ -773,51 +780,64 @@ performBoruta <- function(data) {
   plot(normHits ~ meanImp, col = boruta_stats$decision, data = boruta_stats)
   
   # Return the selected attributes
-  return(selected_attributes)
+  print(selected_attributes)
 }
-
 
 # --------------------------------------------------------------------
 
 # 9.1 Perform Boruta algorithm on scaled 'knn_na'
 selected_knn_na_boruta <- performBoruta(knn_na)
-# there are  16 confirmed important features and the rest 445 features are rejected.
+# there are 16 important features, stable, unstable results
+remaining_knn_na <- knn_na[,c("label",selected_knn_na_boruta)]
 
 # 9.2 Perform Boruta algorithm on scaled 'knn_sd'
 selected_knn_sd_boruta <- performBoruta(knn_sd)
-# there are  27 confirmed important features and the rest 434 features are rejected.
+# there are 18 important features, unstable results (sometimes 27 and sometimes 18)
+remaining_knn_sd <- knn_sd[,c("label", selected_knn_sd_boruta)]
 
-# 9.3 Perform Boruta algorithm on unscaled 'train_knn_na'
-train_knn_na_boruta <- bind_cols(select(knn_na, label = label), train_knn_na)
-selected_train_knn_na_boruta <- performBoruta(train_knn_na_boruta)
-# there are  5 confirmed important features and the rest 455 features are rejected.
+# 9.3 Perform Boruta algorithm on scaled "knn_train_red"
+selected_knn_train_red_boruta <- performBoruta(knn_train_red)
+# there are 21 important features, unstable results
+remaining_knn_train <- knn_train_red[,c("label", selected_knn_train_red_boruta)]
 
-# 9.4 Perform Boruta algorithm on unscaled 'train_knn_sd'
-train_knn_sd_boruta <- bind_cols(select(knn_sd, label = label), train_knn_sd)
-selected_train_knn_sd_boruta <- performBoruta(train_knn_sd_boruta)
-# there are  3 confirmed important features and the rest 457 features are rejected.
+# 9.4 Perform Boruta algorithm on unscaled "train_knn_na"
+selected_train_knn_na_boruta <- performBoruta(train_knn_na)
+# there are 26 important features
+remaining_train_knn_na <- train_knn_na[,c("label", selected_train_knn_na_boruta)]
 
-# 9.5 Perform scaling and Boruta algorithm on unscaled 'hot_na'
-hot_na_boruta <- scaled(hot_na[,!names(hot_na) %in% c("date")])
-selected_hot_na_boruta <- performBoruta(hot_na_boruta)
-# there are  13 confirmed important features and the rest 447 features are rejected.
+# 9.5 Perform Boruta algorithm on unscaled "train_knn_sd"
+selected_train_knn_sd_boruta <- performBoruta(train_knn_sd)
+# there are 19 important features
+remaining_train_knn_sd <- train_knn_sd[,c("label", selected_train_knn_sd_boruta)]
 
-# 9.6 Perform scaling and Boruta algorithm on unscaled 'hot_sd'
-hot_sd_boruta <- bind_cols(select(outlier_sd, label = label), hot_sd_norm)
-selected_hot_sd_boruta <- performBoruta(hot_sd_boruta)
-# there are  26 confirmed important features and the rest 434 features are rejected.
+# 9.6 Perform Boruta algorithm on unscaled 'train_knn_outlier'
+selected_knn_outlier_boruta <- performBoruta(train_knn_outlier)
+# there are 18 important features
+remaining_train_knn_outlier<- train_knn_outlier[,c("label", selected_knn_outlier_boruta)]
 
-# 9.7 Perform scaling and Boruta algorithm on unscaled 'train_knn_outlier'
-train_knn_outlier_norm <- scaled(train_knn_outlier)
-train_knn_outlier_boruta <- bind_cols(select(hot_red, label = label), train_knn_outlier_norm)
-selected_train_knn_outlier_boruta <- performBoruta(train_knn_outlier_boruta)
-# there are  4 confirmed important features and the rest 456 features are rejected.
+# 9.7 Perform Boruta algorithm on scaled "hot_na"
+scaled_hot_na_boruta <- scaled(hot_na[,!names(hot_na) %in% c("label","date")])
+scaled_hot_na_boruta <- bind_cols(hot_na[,names(hot_na) %in% c("label","date")], scaled_hot_na_boruta)
+selected_sc_hot_na_boruta <- performBoruta(scaled_hot_na_boruta)
 
-# 9.8 Perform scaling and Boruta algorithm on unscaled 'train_hot_outlier'
-train_hot_outlier_norm <- scaled(train_hot_outlier[,!names(train_hot_outlier)%in%c("label","date")])
-train_hot_outlier_boruta <- bind_cols(select(hot_red, label = label), train_knn_outlier_norm)
-selected_train_hot_outlier_boruta <- performBoruta(train_hot_outlier_boruta)
-# there are  4 confirmed important features and the rest 456 features are rejected.
+# 9.8 Perform Boruta algorithm on scaled 'hot_sd'
+scaled_hot_sd_boruta <- scaled(hot_sd[,!names(hot_sd) %in% c("label","date")])
+scaled_hot_sd_boruta <- bind_cols(hot_sd[,names(hot_sd) %in% c("label","date")], scaled_hot_sd_boruta)
+selected_sc_hot_sd_boruta <- performBoruta(scaled_hot_sd_boruta)
+
+# 9.9 Perform Boruta algorithm on scaled "hot_outlier"
+scaled_hot_outlier_boruta <- scaled(train_hot_outlier[,!names(train_hot_outlier) %in% c("label","date")])
+scaled_hot_outlier_boruta <- bind_cols(train_hot_outlier[,names(train_hot_outlier) %in% c("label","date")], scaled_hot_outlier_boruta)
+selected_sc_hot_outlier_boruta <- performBoruta(scaled_hot_outlier_boruta)
+
+# 9.10 Perform Boruta algorithm on unscaled "hot_na"
+selected_hot_na_boruta <- performBoruta(hot_na)
+
+# 9.11 Perform Boruta algorithm on unscaled 'hot_sd'
+selected_hot_sd_boruta <- performBoruta(hot_sd)
+
+# 9.12 Perform Boruta algorithm of unscaled "train_hot_outlier"
+selected_hot_outlier_boruta <- performBoruta(train_hot_outlier)
 
 
 # Overview of remaining features using statistical methods after BORUTA---------
@@ -965,151 +985,151 @@ legend("topleft", c("Majority class", "Minority class"), pch = 16, col = c("blue
 
 # Below, the 5 chosen balancing methods will be applied to all datasets.
 
-# 10 Datasets from PCA (feature reduction) -------------------------------------
-
-# 10.1 hot_na_k
-# Prepare for balancing by binding the target variable back with the data
-hot_pca_na_k_bal <- bind_cols(select(hot_na, label = label), hot_na_k)
-
-# over sampling 
-hot_pca_na_k_bal_over <- ovun.sample(label~., data = hot_pca_na_k_bal, method = "over",N = 2340)$data
-table(hot_pca_na_k_bal_over$label)
-
-# over and under sampling
-hot_pca_na_k_bal_both <- ovun.sample(label~., data = hot_pca_na_k_bal, method = "both", p=0.5,N=1253, seed = 1)$data
-table(hot_pca_na_k_bal_both$label)
-
-#ROSE shrunk
-hot_pca_na_k_rose <- ROSE(label~., data = hot_pca_na_k_bal, seed = 1,hmult.majo = 0.25 , hmult.mino = 0.5)$data
-table(hot_pca_na_k_rose$label)
-
-#SMOTE
-hot_pca_na_k_SMOTE <- SMOTE(X = hot_pca_na_k_bal[,-1], hot_pca_na_k_bal$label)$data
-table(hot_pca_na_k_SMOTE$class)
-
-#ADASYN
-hot_pca_na_k_ADASYN<-ADAS(X=hot_pca_na_k_bal[,-1], target=hot_pca_na_k_bal$label)$data
-table(hot_pca_na_k_ADASYN$class)
-
-#10.2 hot_sd_k
-# Prepare for balancing by binding the target variable back with the data
-hot_pca_sd_k_bal <- bind_cols(select(hot_sd, label = label), hot_sd_k)
-
-# over sampling 
-hot_pca_sd_k_bal_over <- ovun.sample(label~., data = hot_pca_sd_k_bal, method = "over",N = 2340)$data
-table(hot_pca_sd_k_bal_over$label)
-
-# over and under sampling
-hot_pca_sd_k_bal_both <- ovun.sample(label~., data = hot_pca_sd_k_bal, method = "both", p=0.5,N=1253, seed = 1)$data
-table(hot_pca_sd_k_bal_both$label)
-
-#ROSE shrunk
-hot_pca_sd_k_rose <- ROSE(label~., data = hot_pca_sd_k_bal, seed = 1,hmult.majo = 0.25 , hmult.mino = 0.5)$data
-table(hot_pca_sd_k_rose$label)
-
-#SMOTE
-hot_pca_sd_k_SMOTE <- SMOTE(X = hot_pca_sd_k_bal[,-1], hot_pca_sd_k_bal$label)$data
-table(hot_pca_sd_k_SMOTE$class)
-
-#ADASYN
-hot_pca_sd_k_ADASYN<-ADAS(X=hot_pca_sd_k_bal[,-1], target=hot_pca_sd_k_bal$label)$data
-table(hot_pca_sd_k_ADASYN$class)
-
-#10.3 hot_outlier_k
-# Prepare for balancing by binding the target variable back with the data
-hot_pca_outlier_k_bal <- bind_cols(select(train_hot_outlier, label = label), hot_outlier_k)
-
-# over sampling 
-hot_pca_outlier_k_over <- ovun.sample(label~., data = hot_pca_outlier_k_bal, method = "over",N = 2340)$data
-table(hot_pca_outlier_k_over$label)
-
-# over and under sampling
-hot_pca_outlier_k_both <- ovun.sample(label~., data = hot_pca_outlier_k_bal, method = "both", p=0.5,N=1253, seed = 1)$data
-table(hot_pca_outlier_k_both$label)
-
-#ROSE shrunk
-hot_pca_outlier_k_rose <- ROSE(label~., data = hot_pca_outlier_k_bal, seed = 1,hmult.majo = 0.25 , hmult.mino = 0.5)$data
-table(hot_pca_outlier_k_rose$label)
-
-#SMOTE
-hot_pca_outlier_k_SMOTE <- SMOTE(X = hot_pca_outlier_k_bal[,-1], hot_pca_outlier_k_bal$label)$data
-table(hot_pca_outlier_k_SMOTE$class)
-
-#ADASYN
-hot_pca_outlier_k_ADASYN<-ADAS(X=hot_pca_outlier_k_bal[,-1], target=hot_pca_outlier_k_bal$label)$data
-table(hot_pca_outlier_k_ADASYN$class)
-
-#10.4 hot_na_var
-# Prepare for balancing by binding the target variable back with the data
-hot_pca_na_var_bal <- bind_cols(select(hot_na, label = label), hot_na_var)
-
-# over sampling 
-hot_pca_na_var_over <- ovun.sample(label~., data = hot_pca_na_var_bal, method = "over",N = 2340)$data
-table(hot_pca_na_var_over$label)
-
-# over and under sampling
-hot_pca_na_var_both <- ovun.sample(label~., data = hot_pca_na_var_bal, method = "both", p=0.5,N=1253, seed = 1)$data
-table(hot_pca_na_var_both$label)
-
-#ROSE shrunk
-hot_pca_na_var_rose <- ROSE(label~., data = hot_pca_na_var_bal, seed = 1,hmult.majo = 0.25 , hmult.mino = 0.5)$data
-table(hot_pca_na_var_rose$label)
-
-#SMOTE
-hot_pca_na_var_SMOTE <- SMOTE(X = hot_pca_na_var_bal[,-1], hot_pca_na_var_bal$label)$data
-table(hot_pca_na_var_SMOTE$class)
-
-#ADASYN
-hot_pca_na_var_ADASYN<-ADAS(X=hot_pca_na_var_bal[,-1], target=hot_pca_na_var_bal$label)$data
-table(hot_pca_na_var_ADASYN$class)
-
-#10.5 hot_na_var
-# Prepare for balancing by binding the target variable back with the data
-hot_pca_sd_var_bal <- bind_cols(select(hot_sd, label = label), hot_sd_var)
-
-# over sampling 
-hot_pca_sd_var_over <- ovun.sample(label~., data = hot_pca_sd_var_bal, method = "over",N = 2340)$data
-table(hot_pca_sd_var_over$label)
-
-# over and under sampling
-hot_pca_sd_var_both <- ovun.sample(label~., data = hot_pca_sd_var_bal, method = "both", p=0.5,N=1253, seed = 1)$data
-table(hot_pca_sd_var_both$label)
-
-#ROSE shrunk
-hot_pca_sd_var_rose <- ROSE(label~., data = hot_pca_sd_var_bal, seed = 1,hmult.majo = 0.25 , hmult.mino = 0.5)$data
-table(hot_pca_sd_var_rose$label)
-
-#SMOTE
-hot_pca_sd_var_SMOTE <- SMOTE(X = hot_pca_sd_var_bal[,-1], hot_pca_sd_var_bal$label)$data
-table(hot_pca_sd_var_SMOTE$class)
-
-#ADASYN
-hot_pca_sd_var_ADASYN<-ADAS(X=hot_pca_sd_var_bal[,-1], target=hot_pca_sd_var_bal$label)$data
-table(hot_pca_sd_var_ADASYN$class)
-
-#10.6 hot_outlier_var
-# Prepare for balancing by binding the target variable back with the data
-hot_pca_outlier_var_bal <- bind_cols(select(train_hot_outlier, label = label), hot_outlier_var)
-
-# over sampling 
-hot_pca_outlier_var_over <- ovun.sample(label~., data = hot_pca_outlier_var_bal, method = "over",N = 2340)$data
-table(hot_pca_outlier_var_over$label)
-
-# over and under sampling
-hot_pca_outlier_var_both <- ovun.sample(label~., data = hot_pca_outlier_var_bal, method = "both", p=0.5,N=1253, seed = 1)$data
-table(hot_pca_outlier_var_both$label)
-
-#ROSE shrunk
-hot_pca_outlier_var_rose <- ROSE(label~., data = hot_pca_outlier_var_bal, seed = 1,hmult.majo = 0.25 , hmult.mino = 0.5)$data
-table(hot_pca_outlier_var_rose$label)
-
-#SMOTE
-hot_pca_outlier_var_SMOTE <- SMOTE(X = hot_pca_outlier_var_bal[,-1], hot_pca_outlier_var_bal$label)$data
-table(hot_pca_outlier_var_SMOTE$class)
-
-#ADASYN
-hot_pca_outlier_var_ADASYN<-ADAS(X=hot_pca_outlier_var_bal[,-1], target=hot_pca_outlier_var_bal$label)$data
-table(hot_pca_outlier_var_ADASYN$class)
+# # 10 Datasets from PCA (feature reduction) -------------------------------------
+# 
+# # 10.1 hot_na_k
+# # Prepare for balancing by binding the target variable back with the data
+# hot_pca_na_k_bal <- bind_cols(select(hot_na, label = label), hot_na_k)
+# 
+# # over sampling 
+# hot_pca_na_k_bal_over <- ovun.sample(label~., data = hot_pca_na_k_bal, method = "over",N = 2340)$data
+# table(hot_pca_na_k_bal_over$label)
+# 
+# # over and under sampling
+# hot_pca_na_k_bal_both <- ovun.sample(label~., data = hot_pca_na_k_bal, method = "both", p=0.5,N=1253, seed = 1)$data
+# table(hot_pca_na_k_bal_both$label)
+# 
+# #ROSE shrunk
+# hot_pca_na_k_rose <- ROSE(label~., data = hot_pca_na_k_bal, seed = 1,hmult.majo = 0.25 , hmult.mino = 0.5)$data
+# table(hot_pca_na_k_rose$label)
+# 
+# #SMOTE
+# hot_pca_na_k_SMOTE <- SMOTE(X = hot_pca_na_k_bal[,-1], hot_pca_na_k_bal$label)$data
+# table(hot_pca_na_k_SMOTE$class)
+# 
+# #ADASYN
+# hot_pca_na_k_ADASYN<-ADAS(X=hot_pca_na_k_bal[,-1], target=hot_pca_na_k_bal$label)$data
+# table(hot_pca_na_k_ADASYN$class)
+# 
+# #10.2 hot_sd_k
+# # Prepare for balancing by binding the target variable back with the data
+# hot_pca_sd_k_bal <- bind_cols(select(hot_sd, label = label), hot_sd_k)
+# 
+# # over sampling 
+# hot_pca_sd_k_bal_over <- ovun.sample(label~., data = hot_pca_sd_k_bal, method = "over",N = 2340)$data
+# table(hot_pca_sd_k_bal_over$label)
+# 
+# # over and under sampling
+# hot_pca_sd_k_bal_both <- ovun.sample(label~., data = hot_pca_sd_k_bal, method = "both", p=0.5,N=1253, seed = 1)$data
+# table(hot_pca_sd_k_bal_both$label)
+# 
+# #ROSE shrunk
+# hot_pca_sd_k_rose <- ROSE(label~., data = hot_pca_sd_k_bal, seed = 1,hmult.majo = 0.25 , hmult.mino = 0.5)$data
+# table(hot_pca_sd_k_rose$label)
+# 
+# #SMOTE
+# hot_pca_sd_k_SMOTE <- SMOTE(X = hot_pca_sd_k_bal[,-1], hot_pca_sd_k_bal$label)$data
+# table(hot_pca_sd_k_SMOTE$class)
+# 
+# #ADASYN
+# hot_pca_sd_k_ADASYN<-ADAS(X=hot_pca_sd_k_bal[,-1], target=hot_pca_sd_k_bal$label)$data
+# table(hot_pca_sd_k_ADASYN$class)
+# 
+# #10.3 hot_outlier_k
+# # Prepare for balancing by binding the target variable back with the data
+# hot_pca_outlier_k_bal <- bind_cols(select(train_hot_outlier, label = label), hot_outlier_k)
+# 
+# # over sampling 
+# hot_pca_outlier_k_over <- ovun.sample(label~., data = hot_pca_outlier_k_bal, method = "over",N = 2340)$data
+# table(hot_pca_outlier_k_over$label)
+# 
+# # over and under sampling
+# hot_pca_outlier_k_both <- ovun.sample(label~., data = hot_pca_outlier_k_bal, method = "both", p=0.5,N=1253, seed = 1)$data
+# table(hot_pca_outlier_k_both$label)
+# 
+# #ROSE shrunk
+# hot_pca_outlier_k_rose <- ROSE(label~., data = hot_pca_outlier_k_bal, seed = 1,hmult.majo = 0.25 , hmult.mino = 0.5)$data
+# table(hot_pca_outlier_k_rose$label)
+# 
+# #SMOTE
+# hot_pca_outlier_k_SMOTE <- SMOTE(X = hot_pca_outlier_k_bal[,-1], hot_pca_outlier_k_bal$label)$data
+# table(hot_pca_outlier_k_SMOTE$class)
+# 
+# #ADASYN
+# hot_pca_outlier_k_ADASYN<-ADAS(X=hot_pca_outlier_k_bal[,-1], target=hot_pca_outlier_k_bal$label)$data
+# table(hot_pca_outlier_k_ADASYN$class)
+# 
+# #10.4 hot_na_var
+# # Prepare for balancing by binding the target variable back with the data
+# hot_pca_na_var_bal <- bind_cols(select(hot_na, label = label), hot_na_var)
+# 
+# # over sampling 
+# hot_pca_na_var_over <- ovun.sample(label~., data = hot_pca_na_var_bal, method = "over",N = 2340)$data
+# table(hot_pca_na_var_over$label)
+# 
+# # over and under sampling
+# hot_pca_na_var_both <- ovun.sample(label~., data = hot_pca_na_var_bal, method = "both", p=0.5,N=1253, seed = 1)$data
+# table(hot_pca_na_var_both$label)
+# 
+# #ROSE shrunk
+# hot_pca_na_var_rose <- ROSE(label~., data = hot_pca_na_var_bal, seed = 1,hmult.majo = 0.25 , hmult.mino = 0.5)$data
+# table(hot_pca_na_var_rose$label)
+# 
+# #SMOTE
+# hot_pca_na_var_SMOTE <- SMOTE(X = hot_pca_na_var_bal[,-1], hot_pca_na_var_bal$label)$data
+# table(hot_pca_na_var_SMOTE$class)
+# 
+# #ADASYN
+# hot_pca_na_var_ADASYN<-ADAS(X=hot_pca_na_var_bal[,-1], target=hot_pca_na_var_bal$label)$data
+# table(hot_pca_na_var_ADASYN$class)
+# 
+# #10.5 hot_na_var
+# # Prepare for balancing by binding the target variable back with the data
+# hot_pca_sd_var_bal <- bind_cols(select(hot_sd, label = label), hot_sd_var)
+# 
+# # over sampling 
+# hot_pca_sd_var_over <- ovun.sample(label~., data = hot_pca_sd_var_bal, method = "over",N = 2340)$data
+# table(hot_pca_sd_var_over$label)
+# 
+# # over and under sampling
+# hot_pca_sd_var_both <- ovun.sample(label~., data = hot_pca_sd_var_bal, method = "both", p=0.5,N=1253, seed = 1)$data
+# table(hot_pca_sd_var_both$label)
+# 
+# #ROSE shrunk
+# hot_pca_sd_var_rose <- ROSE(label~., data = hot_pca_sd_var_bal, seed = 1,hmult.majo = 0.25 , hmult.mino = 0.5)$data
+# table(hot_pca_sd_var_rose$label)
+# 
+# #SMOTE
+# hot_pca_sd_var_SMOTE <- SMOTE(X = hot_pca_sd_var_bal[,-1], hot_pca_sd_var_bal$label)$data
+# table(hot_pca_sd_var_SMOTE$class)
+# 
+# #ADASYN
+# hot_pca_sd_var_ADASYN<-ADAS(X=hot_pca_sd_var_bal[,-1], target=hot_pca_sd_var_bal$label)$data
+# table(hot_pca_sd_var_ADASYN$class)
+# 
+# #10.6 hot_outlier_var
+# # Prepare for balancing by binding the target variable back with the data
+# hot_pca_outlier_var_bal <- bind_cols(select(train_hot_outlier, label = label), hot_outlier_var)
+# 
+# # over sampling 
+# hot_pca_outlier_var_over <- ovun.sample(label~., data = hot_pca_outlier_var_bal, method = "over",N = 2340)$data
+# table(hot_pca_outlier_var_over$label)
+# 
+# # over and under sampling
+# hot_pca_outlier_var_both <- ovun.sample(label~., data = hot_pca_outlier_var_bal, method = "both", p=0.5,N=1253, seed = 1)$data
+# table(hot_pca_outlier_var_both$label)
+# 
+# #ROSE shrunk
+# hot_pca_outlier_var_rose <- ROSE(label~., data = hot_pca_outlier_var_bal, seed = 1,hmult.majo = 0.25 , hmult.mino = 0.5)$data
+# table(hot_pca_outlier_var_rose$label)
+# 
+# #SMOTE
+# hot_pca_outlier_var_SMOTE <- SMOTE(X = hot_pca_outlier_var_bal[,-1], hot_pca_outlier_var_bal$label)$data
+# table(hot_pca_outlier_var_SMOTE$class)
+# 
+# #ADASYN
+# hot_pca_outlier_var_ADASYN<-ADAS(X=hot_pca_outlier_var_bal[,-1], target=hot_pca_outlier_var_bal$label)$data
+# table(hot_pca_outlier_var_ADASYN$class)
 
 # 10 Datasets from BORUTA (feature selection) ----------------------------------
 
