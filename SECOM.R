@@ -766,7 +766,7 @@ performBoruta <- function(data) {
     label ~ .,
     data = data,
     pValue = 0.05,
-    maxRuns = 200,
+    maxRuns = 300,
     doTrace = 2
   )
   
@@ -789,55 +789,92 @@ performBoruta <- function(data) {
 selected_knn_na_boruta <- performBoruta(knn_na)
 # there are 16 important features, stable, unstable results
 remaining_knn_na <- knn_na[,c("label",selected_knn_na_boruta)]
+saveRDS(remaining_knn_na, "remaining_knn_na.RDS")
+remaining_knn_na <- readRDS("remaining_knn_na.RDS")
+
 
 # 9.2 Perform Boruta algorithm on scaled 'knn_sd'
 selected_knn_sd_boruta <- performBoruta(knn_sd)
 # there are 18 important features, unstable results (sometimes 27 and sometimes 18)
 remaining_knn_sd <- knn_sd[,c("label", selected_knn_sd_boruta)]
+saveRDS(remaining_knn_sd, "remaining_knn_sd.RDS")
+remaining_knn_sd <- readRDS("remaining_knn_sd.RDS")
 
 # 9.3 Perform Boruta algorithm on scaled "knn_train_red"
 selected_knn_train_red_boruta <- performBoruta(knn_train_red)
-# there are 21 important features, unstable results
+# there are 20 important features, unstable results
 remaining_knn_train <- knn_train_red[,c("label", selected_knn_train_red_boruta)]
+saveRDS(remaining_knn_train, "remaining_knn_train.RDS")
+remaining_knn_train <- readRDS("remaining_knn_train.RDS")
 
 # 9.4 Perform Boruta algorithm on unscaled "train_knn_na"
 selected_train_knn_na_boruta <- performBoruta(train_knn_na)
-# there are 26 important features
+# there are 24 important features
 remaining_train_knn_na <- train_knn_na[,c("label", selected_train_knn_na_boruta)]
+saveRDS(remaining_train_knn_na, "remaining_train_knn_na.RDS")
+remaining_train_knn_na <- readRDS("remaining_train_knn_na.RDS")
 
 # 9.5 Perform Boruta algorithm on unscaled "train_knn_sd"
 selected_train_knn_sd_boruta <- performBoruta(train_knn_sd)
 # there are 19 important features
 remaining_train_knn_sd <- train_knn_sd[,c("label", selected_train_knn_sd_boruta)]
+saveRDS(remaining_train_knn_sd, "remaining_train_knn_sd.RDS")
+remaining_train_knn_sd <- readRDS("remaining_train_knn_sd.RDS")
 
 # 9.6 Perform Boruta algorithm on unscaled 'train_knn_outlier'
 selected_knn_outlier_boruta <- performBoruta(train_knn_outlier)
 # there are 18 important features
 remaining_train_knn_outlier<- train_knn_outlier[,c("label", selected_knn_outlier_boruta)]
+saveRDS(remaining_train_knn_outlier, "remaining_train_knn_outlier.RDS")
+remaining_train_knn_outlier <- readRDS("remaining_train_knn_outlier.RDS")
 
 # 9.7 Perform Boruta algorithm on scaled "hot_na"
 scaled_hot_na_boruta <- scaled(hot_na[,!names(hot_na) %in% c("label","date")])
 scaled_hot_na_boruta <- bind_cols(hot_na[,names(hot_na) %in% c("label","date")], scaled_hot_na_boruta)
 selected_sc_hot_na_boruta <- performBoruta(scaled_hot_na_boruta)
+# there are 20 important features
+remaining_sc_hot_na <- hot_na[,c("label", selected_sc_hot_na_boruta)]
+saveRDS(remaining_sc_hot_na, "remaining_sc_hot_na.RDS")
+remaining_sc_hot_na <- readRDS("remaining_sc_hot_na.RDS")
 
 # 9.8 Perform Boruta algorithm on scaled 'hot_sd'
 scaled_hot_sd_boruta <- scaled(hot_sd[,!names(hot_sd) %in% c("label","date")])
 scaled_hot_sd_boruta <- bind_cols(hot_sd[,names(hot_sd) %in% c("label","date")], scaled_hot_sd_boruta)
 selected_sc_hot_sd_boruta <- performBoruta(scaled_hot_sd_boruta)
+# there are 7 important features
+remaining_sc_hot_sd <- hot_sd[,c("label", selected_sc_hot_sd_boruta)]
+saveRDS(remaining_sc_hot_sd, "remaining_sc_hot_sd.RDS")
+remaining_sc_hot_sd <- readRDS("remaining_sc_hot_sd.RDS")
 
 # 9.9 Perform Boruta algorithm on scaled "hot_outlier"
 scaled_hot_outlier_boruta <- scaled(train_hot_outlier[,!names(train_hot_outlier) %in% c("label","date")])
 scaled_hot_outlier_boruta <- bind_cols(train_hot_outlier[,names(train_hot_outlier) %in% c("label","date")], scaled_hot_outlier_boruta)
 selected_sc_hot_outlier_boruta <- performBoruta(scaled_hot_outlier_boruta)
+# there are 12 important features
+remaining_sc_hot_outlier <- train_hot_outlier[,c("label", selected_sc_hot_outlier_boruta)]
+saveRDS(remaining_sc_hot_outlier, "remaining_sc_hot_outlier.RDS")
+remaining_sc_hot_outlier <- readRDS("remaining_sc_hot_outlier.RDS")
 
 # 9.10 Perform Boruta algorithm on unscaled "hot_na"
 selected_hot_na_boruta <- performBoruta(hot_na)
+# there are 15 important features
+remaining_hot_na <- hot_na[,c("label", selected_hot_na_boruta)]
+saveRDS(remaining_hot_na, "remaining_hot_na.RDS")
+remaining_hot_na <- readRDS("remaining_hot_na.RDS")
 
 # 9.11 Perform Boruta algorithm on unscaled 'hot_sd'
 selected_hot_sd_boruta <- performBoruta(hot_sd)
+# there are 19 important features
+remaining_hot_sd <- hot_sd[,c("label", selected_hot_sd_boruta)]
+saveRDS(remaining_hot_sd, "remaining_hot_sd.RDS")
+remaining_hot_sd <- readRDS("remaining_hot_sd.RDS")
 
 # 9.12 Perform Boruta algorithm of unscaled "train_hot_outlier"
 selected_hot_outlier_boruta <- performBoruta(train_hot_outlier)
+# there are 16 important features
+remaining_hot_outlier <- train_hot_outlier[,c("label", selected_hot_outlier_boruta)]
+saveRDS(remaining_hot_outlier, "remaining_hot_outlier.RDS")
+remaining_hot_outlier <- readRDS("remaining_hot_outlier.RDS")
 
 
 # Overview of remaining features using statistical methods after BORUTA---------
