@@ -1170,119 +1170,270 @@ legend("topleft", c("Majority class", "Minority class"), pch = 16, col = c("blue
 
 # 10 Datasets from BORUTA (feature selection) ----------------------------------
 
-#10.7 knn_na_boruta
-
-# select only features that got confirmed by boruta from the training set
-knn_na_boruta_data <- knn_na[, selected_knn_na_boruta]
-
-# Prepare for balancing by binding the target variable back with the data
-knn_na_boruta_bal <- bind_cols(select(knn_na, label = label), knn_na_boruta_data)
+#10.7 remaining_knn_na
 
 # over sampling 
-knn_na_boruta_over <- ovun.sample(label~., data = knn_na_boruta_bal, method = "over",N = 2340)$data
-table(knn_na_boruta_over$label)
+knn_na_over <- ovun.sample(label~., data = remaining_knn_na, method = "over",N = 2340)$data
+table(knn_na_over$label)
 
 # over and under sampling
-knn_na_boruta_both <- ovun.sample(label~., data = knn_na_boruta_bal, method = "both", p=0.5,N=1253, seed = 1)$data
-table(knn_na_boruta_both$label)
+knn_na_both <- ovun.sample(label~., data = remaining_knn_na, method = "both", p=0.5,N=1253, seed = 1)$data
+table(knn_na_both$label)
 
 #ROSE shrunk
-knn_na_boruta_rose <- ROSE(label~., data = knn_na_boruta_bal, seed = 1,hmult.majo = 0.25 , hmult.mino = 0.5)$data
-table(knn_na_boruta_rose$label)
+knn_na_rose <- ROSE(label~., data = remaining_knn_na, seed = 1,hmult.majo = 0.25 , hmult.mino = 0.5)$data
+table(knn_na_rose$label)
 
 #SMOTE
-knn_na_boruta_SMOTE <- SMOTE(X = knn_na_boruta_bal[,-1], knn_na_boruta_bal$label)$data
-table(knn_na_boruta_SMOTE$class)
+knn_na_smote <- SMOTE(X = remaining_knn_na[,-1], remaining_knn_na$label)$data
+table(knn_na_smote$class)
 
 #ADASYN
-knn_na_boruta_ADASYN<-ADAS(X=knn_na_boruta_bal[,-1], target=knn_na_boruta_bal$label)$data
-table(knn_na_boruta_ADASYN$class)
+knn_na_adasyn<-ADAS(X=remaining_knn_na[,-1], target=remaining_knn_na$label)$data
+table(knn_na_adasyn$class)
 
-#10.8 knn_sd_boruta
-
-# select only features that got confirmed by boruta from the training set
-knn_sd_boruta_data <- knn_sd[, selected_knn_sd_boruta]
-
-# Prepare for balancing by binding the target variable back with the data
-knn_sd_boruta_bal <- bind_cols(select(knn_sd, label = label), knn_sd_boruta_data)
+#10.8 remaining_knn_sd
 
 # over sampling 
-knn_sd_boruta_over <- ovun.sample(label~., data = knn_sd_boruta_bal, method = "over",N = 2340)$data
-table(knn_sd_boruta_over$label)
+knn_sd_over <- ovun.sample(label~., data = remaining_knn_sd, method = "over",N = 2340)$data
+table(knn_sd_over$label)
 
 # over and under sampling
-knn_sd_boruta_both <- ovun.sample(label~., data = knn_sd_boruta_bal, method = "both", p=0.5,N=1253, seed = 1)$data
-table(knn_sd_boruta_both$label)
+knn_sd_both <- ovun.sample(label~., data = remaining_knn_sd, method = "both", p=0.5,N=1253, seed = 1)$data
+table(knn_sd_both$label)
 
 #ROSE shrunk
-knn_sd_boruta_rose <- ROSE(label~., data = knn_sd_boruta_bal, seed = 1,hmult.majo = 0.25 , hmult.mino = 0.5)$data
-table(knn_sd_boruta_rose$label)
+knn_sd_rose <- ROSE(label~., data = remaining_knn_sd, seed = 1,hmult.majo = 0.25 , hmult.mino = 0.5)$data
+table(knn_sd_rose$label)
 
 #SMOTE
-knn_sd_boruta_SMOTE <- SMOTE(X = knn_sd_boruta_bal[,-1], knn_sd_boruta_bal$label)$data
-table(knn_sd_boruta_SMOTE$class)
+knn_sd_smote <- SMOTE(X = remaining_knn_sd[,-1], remaining_knn_sd$label)$data
+table(knn_sd_smote$class)
 
 #ADASYN
-knn_sd_boruta_ADASYN<-ADAS(X=knn_sd_boruta_bal[,-1], target=knn_sd_boruta_bal$label)$data
-table(knn_sd_boruta_ADASYN$class)
+knn_sd_adasyn <-ADAS(X=remaining_knn_sd[,-1], target=remaining_knn_sd$label)$data
+table(knn_sd_adasyn$class)
 
-#10.9 hot_na_boruta
-
-# select only features that got confirmed by boruta from the training set
-hot_na_boruta_data <- hot_na[, selected_hot_na_boruta]
-
-# Prepare for balancing by binding the target variable back with the data
-hot_na_boruta_bal <- bind_cols(select(hot_na, label = label), hot_na_boruta_data)
+# 10.9 remaining_knn_train
 
 # over sampling 
-hot_na_boruta_over <- ovun.sample(label~., data = hot_na_boruta_bal, method = "over",N = 2340)$data
-table(hot_na_boruta_over$label)
+knn_train_over <- ovun.sample(label~., data = remaining_knn_train, method = "over",N = 2340)$data
+table(knn_train_over$label)
 
 # over and under sampling
-hot_na_boruta_both <- ovun.sample(label~., data = hot_na_boruta_bal, method = "both", p=0.5,N=1253, seed = 1)$data
-table(hot_na_boruta_both$label)
+knn_train_both <- ovun.sample(label~., data = remaining_knn_train, method = "both", p=0.5,N=1253, seed = 1)$data
+table(knn_train_both$label)
 
 #ROSE shrunk
-hot_na_boruta_rose <- ROSE(label~., data = hot_na_boruta_bal, seed = 1,hmult.majo = 0.25 , hmult.mino = 0.5)$data
-table(hot_na_boruta_rose$label)
+knn_train_rose <- ROSE(label~., data = remaining_knn_train, seed = 1,hmult.majo = 0.25 , hmult.mino = 0.5)$data
+table(knn_train_rose$label)
 
 #SMOTE
-hot_na_boruta_SMOTE <- SMOTE(X = hot_na_boruta_bal[,-1], hot_na_boruta_bal$label)$data
-table(hot_na_boruta_SMOTE$class)
+knn_train_smote <- SMOTE(X = remaining_knn_train[,-1], remaining_knn_train$label)$data
+table(knn_train_smote$class)
 
 #ADASYN
-hot_na_boruta_ADASYN<-ADAS(X=hot_na_boruta_bal[,-1], target=hot_na_boruta_bal$label)$data
-table(hot_na_boruta_ADASYN$class)
+knn_train_adasyn <-ADAS(X=remaining_knn_train[,-1], target=remaining_knn_train$label)$data
+table(knn_train_adasyn$class)
 
-#10.10 hot_sd_boruta
-
-# select only features that got confirmed by boruta from the training set
-hot_sd_boruta_data <- hot_sd[, selected_hot_sd_boruta]
-
-# Prepare for balancing by binding the target variable back with the data
-hot_sd_boruta_bal <- bind_cols(select(hot_sd, label = label), hot_sd_boruta_data)
+# 10.10 remaining_train_knn_na
 
 # over sampling 
-hot_sd_boruta_over <- ovun.sample(label~., data = hot_sd_boruta_bal, method = "over",N = 2340)$data
-table(hot_sd_boruta_over$label)
+train_knn_na_over <- ovun.sample(label~., data =  remaining_train_knn_na, method = "over",N = 2340)$data
+table(train_knn_na_over$label)
 
 # over and under sampling
-hot_sd_boruta_both <- ovun.sample(label~., data = hot_sd_boruta_bal, method = "both", p=0.5,N=1253, seed = 1)$data
-table(hot_sd_boruta_both$label)
+train_knn_na_both <- ovun.sample(label~., data =  remaining_train_knn_na, method = "both", p=0.5,N=1253, seed = 1)$data
+table(train_knn_na_both$label)
 
 #ROSE shrunk
-hot_sd_boruta_rose <- ROSE(label~., data = hot_sd_boruta_bal, seed = 1,hmult.majo = 0.25 , hmult.mino = 0.5)$data
-table(hot_sd_boruta_rose$label)
+train_knn_na_rose <- ROSE(label~., data =  remaining_train_knn_na, seed = 1,hmult.majo = 0.25 , hmult.mino = 0.5)$data
+table(train_knn_na_rose$label)
 
 #SMOTE
-hot_sd_boruta_SMOTE <- SMOTE(X = hot_sd_boruta_bal[,-1], hot_sd_boruta_bal$label)$data
-table(hot_sd_boruta_SMOTE$class)
+train_knn_na_smote <- SMOTE(X =  remaining_train_knn_na[,-1],  remaining_train_knn_na$label)$data
+table(train_knn_na_smote$class)
 
 #ADASYN
-hot_sd_boruta_ADASYN<-ADAS(X=hot_sd_boruta_bal[,-1], target=hot_sd_boruta_bal$label)$data
-table(hot_sd_boruta_ADASYN$class)
-                
-                
+train_knn_na_adasyn <-ADAS(X= remaining_train_knn_na[,-1], target= remaining_train_knn_na$label)$data
+table(train_knn_na_adasyn$class)
+
+# 10.11 remaining_train_knn_sd
+
+# over sampling 
+train_knn_sd_over <- ovun.sample(label~., data =  remaining_train_knn_sd, method = "over",N = 2340)$data
+table(train_knn_sd_over$label)
+
+# over and under sampling
+train_knn_sd_both <- ovun.sample(label~., data =  remaining_train_knn_sd, method = "both", p=0.5,N=1253, seed = 1)$data
+table(train_knn_sd_both$label)
+
+#ROSE shrunk
+train_knn_sd_rose <- ROSE(label~., data =  remaining_train_knn_sd, seed = 1,hmult.majo = 0.25 , hmult.mino = 0.5)$data
+table(train_knn_sd_rose$label)
+
+#SMOTE
+train_knn_sd_smote <- SMOTE(X = remaining_train_knn_sd[,-1],  remaining_train_knn_sd$label)$data
+table(train_knn_sd_smote$class)
+
+#ADASYN
+train_knn_sd_adasyn <-ADAS(X = remaining_train_knn_sd[,-1], target = remaining_train_knn_sd$label)$data
+table(train_knn_sd_adasyn$class)
+
+# 10.12 remaining_train_knn_outlier
+
+# over sampling 
+train_knn_out_over <- ovun.sample(label~., data =  remaining_train_knn_outlier, method = "over",N = 2340)$data
+table(train_knn_out_over$label)
+
+# over and under sampling
+train_knn_out_both <- ovun.sample(label~., data =  remaining_train_knn_outlier, method = "both", p=0.5,N=1253, seed = 1)$data
+table(train_knn_out_both$label)
+
+#ROSE shrunk
+train_knn_out_rose <- ROSE(label~., data =  remaining_train_knn_outlier, seed = 1,hmult.majo = 0.25 , hmult.mino = 0.5)$data
+table(train_knn_out_rose$label)
+
+#SMOTE
+train_knn_out_smote <- SMOTE(X = remaining_train_knn_outlier[,-1],  remaining_train_knn_outlier$label)$data
+table(train_knn_out_smote$class)
+
+#ADASYN
+train_knn_out_adasyn <-ADAS(X = remaining_train_knn_outlier[,-1], target = remaining_train_knn_outlier$label)$data
+table(train_knn_out_adasyn$class)
+   
+# 10.13 remaining_sc_hot_na
+
+# over sampling 
+hot_na_over <- ovun.sample(label~., data =  remaining_sc_hot_na, method = "over",N = 2340)$data
+table(hot_na_over$label)
+
+# over and under sampling
+hot_na_both <- ovun.sample(label~., data =  remaining_sc_hot_na, method = "both", p=0.5,N=1253, seed = 1)$data
+table(hot_na_both$label)
+
+#ROSE shrunk
+hot_na_rose <- ROSE(label~., data =  remaining_sc_hot_na, seed = 1,hmult.majo = 0.25 , hmult.mino = 0.5)$data
+table(hot_na_rose$label)
+
+#SMOTE
+hot_na_smote <- SMOTE(X = remaining_sc_hot_na[,-1],  remaining_sc_hot_na$label)$data
+table(hot_na_smote$class)
+
+#ADASYN
+hot_na_adasyn <-ADAS(X = remaining_sc_hot_na[,-1], target = remaining_sc_hot_na$label)$data
+table(hot_na_adasyn$class)
+ 
+# 10.14 remaining_sc_hot_sd
+
+# over sampling 
+hot_sd_over <- ovun.sample(label~., data =  remaining_sc_hot_sd, method = "over",N = 2340)$data
+table(hot_sd_over$label)
+
+# over and under sampling
+hot_sd_both <- ovun.sample(label~., data =  remaining_sc_hot_sd, method = "both", p=0.5,N=1253, seed = 1)$data
+table(hot_sd_both$label)
+
+#ROSE shrunk
+hot_sd_rose <- ROSE(label~., data =  remaining_sc_hot_sd, seed = 1,hmult.majo = 0.25 , hmult.mino = 0.5)$data
+table(hot_sd_rose$label)
+
+#SMOTE
+hot_sd_smote <- SMOTE(X = remaining_sc_hot_sd[,-1],  remaining_sc_hot_sd$label)$data
+table(hot_sd_smote$class)
+
+#ADASYN
+hot_sd_adasyn <-ADAS(X = remaining_sc_hot_sd[,-1], target = remaining_sc_hot_sd$label)$data
+table(hot_sd_adasyn$class)
+
+# 10.15 remaining_sc_hot_outlier
+
+# over sampling 
+hot_train_over <- ovun.sample(label~., data =  remaining_sc_hot_outlier, method = "over",N = 2340)$data
+table(hot_train_over$label)
+
+# over and under sampling
+hot_train_both <- ovun.sample(label~., data =  remaining_sc_hot_outlier, method = "both", p=0.5,N=1253, seed = 1)$data
+table(hot_train_both$label)
+
+#ROSE shrunk
+hot_train_rose <- ROSE(label~., data =  remaining_sc_hot_outlier, seed = 1,hmult.majo = 0.25 , hmult.mino = 0.5)$data
+table(hot_train_rose$label)
+
+#SMOTE
+hot_train_smote <- SMOTE(X = remaining_sc_hot_outlier[,-1],  remaining_sc_hot_outlier$label)$data
+table(hot_train_smote$class)
+
+#ADASYN
+hot_train_adasyn <-ADAS(X = remaining_sc_hot_outlier[,-1], target = remaining_sc_hot_outlier$label)$data
+table(hot_train_adasyn$class)
+
+# 10.16 remaining_hot_na
+
+# over sampling 
+train_hot_na_over <- ovun.sample(label~., data =  remaining_hot_na, method = "over",N = 2340)$data
+table(train_hot_na_over$label)
+
+# over and under sampling
+train_hot_na_both <- ovun.sample(label~., data =  remaining_hot_na, method = "both", p=0.5,N=1253, seed = 1)$data
+table(train_hot_na_both$label)
+
+#ROSE shrunk
+train_hot_na_rose <- ROSE(label~., data =  remaining_hot_na, seed = 1,hmult.majo = 0.25 , hmult.mino = 0.5)$data
+table(train_hot_na_rose$label)
+
+#SMOTE
+train_hot_na_smote <- SMOTE(X = remaining_hot_na[,-1],  remaining_hot_na$label)$data
+table(train_hot_na_smote$class)
+
+#ADASYN
+train_hot_na_adasyn <-ADAS(X = remaining_hot_na[,-1], target = remaining_hot_na$label)$data
+table(train_hot_na_adasyn$class)
+
+# 10.17 remaining_hot_sd
+
+# over sampling 
+train_hot_sd_over <- ovun.sample(label~., data =  remaining_hot_sd, method = "over",N = 2340)$data
+table(train_hot_sd_over$label)
+
+# over and under sampling
+train_hot_sd_both <- ovun.sample(label~., data =  remaining_hot_sd, method = "both", p=0.5,N=1253, seed = 1)$data
+table(train_hot_sd_both$label)
+
+#ROSE shrunk
+train_hot_sd_rose <- ROSE(label~., data =  remaining_hot_sd, seed = 1,hmult.majo = 0.25 , hmult.mino = 0.5)$data
+table(train_hot_sd_rose$label)
+
+#SMOTE
+train_hot_sd_smote <- SMOTE(X = remaining_hot_sd[,-1],  remaining_hot_sd$label)$data
+table(train_hot_sd_smote$class)
+
+#ADASYN
+train_hot_sd_adasyn <-ADAS(X = remaining_hot_sd[,-1], target = remaining_hot_sd$label)$data
+table(train_hot_sd_adasyn$class)
+
+# 10.18 remaining_hot_outlier
+
+# over sampling 
+train_hot_out_over <- ovun.sample(label~., data =  remaining_hot_outlier, method = "over",N = 2340)$data
+table(train_hot_out_over$label)
+
+# over and under sampling
+train_hot_out_both <- ovun.sample(label~., data =  remaining_hot_outlier, method = "both", p=0.5,N=1253, seed = 1)$data
+table(train_hot_out_both$label)
+
+#ROSE shrunk
+train_hot_out_rose <- ROSE(label~., data =  remaining_hot_outlier, seed = 1,hmult.majo = 0.25 , hmult.mino = 0.5)$data
+table(train_hot_out_rose$label)
+
+#SMOTE
+train_hot_out_smote <- SMOTE(X = remaining_hot_outlier[,-1],  remaining_hot_outlier$label)$data
+table(train_hot_out_smote$class)
+
+#ADASYN
+train_hot_out_adasyn <-ADAS(X = remaining_hot_outlier[,-1], target = remaining_hot_outlier$label)$data
+table(train_hot_out_adasyn$class)
+
 # XI Modeling
 # 1 Prepare the test set
 # 1.1 Dimensionality reduction
@@ -1291,7 +1442,7 @@ test_red <- dim_reduce(test_set)
 saveRDS(test_red, "test_red.RDS")
 test_red <- readRDS("test_red.RDS")
 test_red <- test_red %>%
-  dplyr::select(-label)
+  dplyr::select(-c("label","date"))
 
 # 1.2 Outliers
 test_outlier <- identify_outliers(test_red)
@@ -1323,34 +1474,74 @@ sum(is.na(test_hot_outlier))
 
 test_hot_outlier <- test_hot_outlier %>%
   mutate(across(where(is.numeric),~ outlier_replace(., method = "SD")))
-as.tibble(test_hot_outlier)
 
-# 1.3.2 kNN TBD
+# 1.3.2 kNN 
+# Scaling
+scaled_test_na <- scaled(test_outlier_na)
+scaled_test_sd <- scaled(test_outlier_sd)
+scaled_test_red <- scaled(test_red)
+# After outlier handling
+test_knn_na <- kNN(scaled_test_na, k = 5, impNA = T, imp_var = F)
+sum(is.na(test_knn_na))
+saveRDS(test_knn_na, "test_knn_na.RDS")
+test_knn_na <- readRDS("test_knn_na.RDS")
 
-# 1.4 PCA
-PCA_extract_test <- function(x, nf) {
-  pca <- PCA(x, graph = F)
-  eigen <- as.tibble(pca$eig)
-  nf <- nf
-  pca_extract <- principal(x, nfactors = nf, covar = F, scores = T)
-  as.tibble(pca_extract$scores)
-}
-# NA set
-test_hot_na_norm <- scaled(test_hot_na[,!names(test_hot_na) %in% c("label","date")])
-sum(is.nan(as.matrix(test_hot_na_norm)))
-# 2198 NaN values: feature75, feature207, feature210, feature343, feature348, feature479 and feature522
-# Produced due to data split and less unique values in these features
-test_hot_na_norm <- test_hot_na_norm[, colSums(is.na(test_hot_na_norm)) == 0]
+# Merge label and date back together with the rest of the data for the imputation
+test_knn_sd <- kNN(scaled_test_sd, k = 5, impNA = T, imp_var = F)
+sum(is.na(test_knn_sd))
+saveRDS(test_knn_sd, "test_knn_sd.RDS")
+test_nn_sd <- readRDS("test_knn_sd.RDS")
 
-# Kaiser criterion
-test_hot_na_k <- PCA_extract_test(test_hot_na_norm, nf = length(hot_na_k))
-test_hot_pca_na_k <- bind_cols(select(test_hot_na, label = label), test_hot_na_k)
+# Reverse scaling
+# For NA set
+test_knn_na <- reverse_scaling(test_outlier_na, test_knn_na)
+
+# For SD set
+test_knn_sd <- reverse_scaling(test_outlier_sd, test_knn_sd)
+
+# Save imputation files as RDS to reduce processing time
+saveRDS(test_knn_na, "test_knn_na.RDS")
+test_knn_na <- readRDS("test_knn_na.RDS")
+
+saveRDS(test_knn_sd, "test_knn_sd.RDS")
+test_knn_sd <- readRDS("test_knn_sd.RDS")
+
+# Before outlier handling
+knn_test_red <- kNN(scaled_test_red, k = 5, impNA = T, imp_var = F)
+sum(is.na(knn_test_red))
+
+saveRDS(knn_test_red, "knn_test_red.RDS")
+knn_test_red <- readRDS("knn_test_red.RDS")
+# Reverse scaling
+test_red_knn <- reverse_scaling(test_red, knn_test_red)
+
+# Outlier handling with 4S
+test_knn_outlier <- test_red_knn %>%
+  mutate(across(where(is.numeric),~ outlier_replace(.x, method = "SD")))
+
+saveRDS(test_knn_outlier, "test_knn_outlier.RDS")
+test_knn_outlier <- readRDS("test_knn_outlier.RDS")
+
+# # 1.4 PCA
+# PCA_extract_test <- function(x, nf) {
+#   pca <- PCA(x, graph = F)
+#   eigen <- as.tibble(pca$eig)
+#   nf <- nf
+#   pca_extract <- principal(x, nfactors = nf, covar = F, scores = T)
+#   as.tibble(pca_extract$scores)
+# }
+# # NA set
+# test_hot_na_norm <- scaled(test_hot_na[,!names(test_hot_na) %in% c("label","date")])
+# sum(is.nan(as.matrix(test_hot_na_norm)))
+# # 2198 NaN values: feature75, feature207, feature210, feature343, feature348, feature479 and feature522
+# # Produced due to data split and less unique values in these features
+# test_hot_na_norm <- test_hot_na_norm[, colSums(is.na(test_hot_na_norm)) == 0]
+# 
+# # Kaiser criterion
+# test_hot_na_k <- PCA_extract_test(test_hot_na_norm, nf = length(hot_na_k))
+# test_hot_pca_na_k <- bind_cols(select(test_hot_na, label = label), test_hot_na_k)
 
 # 2 Random forest
-# 2.1 On PCA datasets
-# 2.1.1 hot_na_k sets = hot deck imputed datasets with PCA by Kaiser criterion and balancing
-# ROSE shrunk balancing
-# Train model on hot_pca_n_k_rose_rf set
 set.seed(12345)
 # Custom random forest model needed to use cross validation on parameters ntree and nodesize
 customRF <- list(type = "Classification", 
