@@ -2331,3 +2331,64 @@ test_hot_out_data <- test_hot_outlier[,colnames(remaining_hot_outlier[-1])]
 train_hot_out_svm_pred <- predict(train_hot_out_svm, newdata = test_hot_out_data, type = "raw")
 test_train_hot_out <- bind_cols(select(test_set, label = label), test_hot_out_data)
 train_hot_out_svm_res <- model_result(train_hot_out_svm_pred, test_train_hot_out$label)
+
+
+# 5. ANN - Artificial Neural Network
+# Use Model Averaged Neural Network and define tuning parameters to improve stability of the model
+# Set random seed
+set.seed(54321)
+
+# Define the control parameters
+train_control_nn <- trainControl(method = "cv", number = 5, search = "grid")
+
+# Define tune grid of number of hidden units, weight decay, and bagging to improve stability
+train_grid_nn <- expand.grid(size = c(5,10,20), 
+                             decay = c(0.01,0.001,0.0001),
+                             bag = 10)
+
+# The scaled data sets from 5.1 to 5.3 will not be implemented with ANN, since the result is a random model that classifies all wafers either as good or faulty.
+
+# 5.4.1 - 5.4.3 train_knn_na
+train_knn_na_nn <- train(as.factor(label)~., data = train_knn_na_rose, method = "avNNet", trControl = train_control_nn, tuneGrid = train_grid_nn)
+test_knn_na_data <- test_knn_na[,colnames(remaining_train_knn_na[-1])]
+train_knn_na_nn_pred <- predict(train_knn_na_nn, newdata = test_knn_na_data, type = "raw")
+test_train_knn_na <- bind_cols(select(test_set, label = label), test_knn_na_data)
+train_knn_na_nn_res <- model_result(train_knn_na_nn_pred, test_train_knn_na$label)
+
+# 5.5.1 - 5.5.3 train_knn_sd
+train_knn_sd_nn <- train(as.factor(label)~., data = train_knn_sd_rose, method = "avNNet", trControl = train_control_nn, tuneGrid = train_grid_nn)
+test_knn_sd_data <- test_knn_sd[,colnames(remaining_train_knn_sd[-1])]
+train_knn_sd_nn_pred <- predict(train_knn_sd_nn, newdata = test_knn_sd_data, type = "raw")
+test_train_knn_sd <- bind_cols(select(test_set, label = label), test_knn_sd_data)
+train_knn_sd_nn_res <- model_result(train_knn_sd_nn_pred, test_train_knn_sd$label)
+
+# 5.6.1 - 5.6.3 train_knn_out
+train_knn_out_nn <- train(as.factor(label)~., data = train_knn_out_rose, method = "avNNet", trControl = train_control_nn, tuneGrid = train_grid_nn)
+test_knn_outlier_data <- test_knn_outlier[,colnames(remaining_train_knn_outlier[-1])]
+train_knn_out_nn_pred <- predict(train_knn_out_nn, newdata = test_knn_outlier_data, type = "raw")
+test_train_knn_out <- bind_cols(select(test_set, label = label), test_knn_outlier_data)
+train_knn_out_nn_res <- model_result(train_knn_out_nn_pred, test_train_knn_out$label)
+
+# The scaled data sets from 5.7 to 5.9 will not be implemented with ANN, since the result is a random model that classifies all wafers either as good or faulty.
+
+# 5.10.1 - 5.10.3 train_hot_na
+train_hot_na_nn <- train(as.factor(label)~., data = train_hot_na_rose, method = "avNNet", trControl = train_control_nn, tuneGrid = train_grid_nn)
+test_hot_na_data <- test_hot_na[,colnames(remaining_hot_na[-1])]
+train_hot_na_nn_pred <- predict(train_hot_na_nn, newdata = test_hot_na_data, type = "raw")
+print(train_hot_na_nn_pred)
+test_train_hot_na <- bind_cols(select(test_set, label = label), test_hot_na_data)
+train_hot_na_nn_res <- model_result(train_hot_na_nn_pred, test_train_hot_na$label)
+
+# 5.11.1 - 5.11.3 train_hot_sd
+train_hot_sd_nn <- train(as.factor(label)~., data = train_hot_sd_rose, method = "avNNet", trControl = train_control_nn, tuneGrid = train_grid_nn)
+test_hot_sd_data <- test_hot_sd[,colnames(remaining_hot_sd[-1])]
+train_hot_sd_nn_pred <- predict(train_hot_sd_svm, newdata = test_hot_sd_data, type = "raw")
+test_train_hot_sd <- bind_cols(select(test_set, label = label), test_hot_sd_data)
+train_hot_sd_nn_res <- model_result(train_hot_sd_nn_pred, test_train_hot_sd$label)
+
+# 5.12.1 - 5.12.3 train_hot_out
+train_hot_out_nn <- train(as.factor(label)~., data = train_hot_out_rose, method = "avNNet", trControl = train_control_nn, tuneGrid = train_grid_nn)
+test_hot_out_data <- test_hot_outlier[,colnames(remaining_hot_outlier[-1])]
+train_hot_out_nn_pred <- predict(train_hot_out_nn, newdata = test_hot_out_data, type = "raw")
+test_train_hot_out <- bind_cols(select(test_set, label = label), test_hot_out_data)
+train_hot_out_nn_res <- model_result(train_hot_out_nn_pred, test_train_hot_out$label)
