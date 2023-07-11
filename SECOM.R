@@ -2247,44 +2247,48 @@ train_hot_out_adasyn_knn_res <- model_result(train_hot_out_adasyn_knn_pred,label
 # Define the control parameters
 train_control_svm <- trainControl(method = "cv", number = 5, search = "grid")
 
+# To further optimise the model performance to improve 'specificity', we employ class weights argument in train()
+# Default we assign 1.5x weight for faulty wafers and 1x weight for good wafers.
+class_weights_svm <- c("-1" = 1, "1" = 1.5)
+
 # 4.1.1 - 4.1.3 knn_na
 # Between the rose. smote, and adasyn training set; edit the data argument in train() function to respective balancing methods
-knn_na_svm <- train(as.factor(label)~., data = knn_na_rose, method = "svmLinear", trControl = train_control_svm)
+knn_na_svm <- train(as.factor(label)~., data = knn_na_rose, method = "svmLinear", trControl = train_control_svm, class.weights = class_weights_svm)
 test_knn_na_sc <- scaled(test_knn_na[,colnames(remaining_knn_na[-1])])
 knn_na_svm_pred <- predict(knn_na_svm, newdata = test_knn_na_sc, type = "raw")
 test_knn_na_sc <- bind_cols(select(test_set, label = label), test_knn_na_sc)
 knn_na_svm_res <- model_result(knn_na_svm_pred, test_knn_na_sc$label)
 
 # 4.2.1 - 4.2.3 knn_sd
-knn_sd_svm <- train(as.factor(label)~., data = knn_sd_rose, method = "svmLinear", trControl = train_control_svm)
+knn_sd_svm <- train(as.factor(label)~., data = knn_sd_rose, method = "svmLinear", trControl = train_control_svm, class.weights = class_weights_svm)
 test_knn_sd_sc <- scaled(test_knn_sd[,colnames(remaining_knn_sd[-1])])
 knn_sd_svm_pred <- predict(knn_sd_svm, newdata = test_knn_sd_sc, type = "raw")
 test_knn_sd_sc <- bind_cols(select(test_set, label = label), test_knn_sd_sc)
 knn_sd_svm_res <- model_result(knn_sd_svm_pred, test_knn_sd_sc$label)
 
 # 4,3.1 - 4,3.3 knn_train
-knn_train_svm <- train(as.factor(label)~., data = knn_train_rose, method = "svmLinear", trControl = train_control_svm)
+knn_train_svm <- train(as.factor(label)~., data = knn_train_rose, method = "svmLinear", trControl = train_control_svm, class.weights = class_weights_svm)
 test_knn_train_sc <- scaled(test_knn_outlier[,colnames(remaining_knn_train[-1])])
 knn_train_svm_pred <- predict(knn_train_svm, newdata = test_knn_train_sc, type = "raw")
 test_knn_train_sc <- bind_cols(select(test_set, label = label), test_knn_train_sc)
 knn_train_svm_res <- model_result(knn_train_svm_pred, test_knn_train_sc$label)
 
-# 4.4.1 - 4.4.3 train_knn_na
-train_knn_na_svm <- train(as.factor(label)~., data = train_knn_na_rose, method = "svmLinear", trControl = train_control_svm)
+# 4.4.1 - 4.4.5 train_knn_na
+train_knn_na_svm <- train(as.factor(label)~., data = train_knn_na_rose, method = "svmLinear", trControl = train_control_svm, class.weights = class_weights_svm)
 test_knn_na_data <- test_knn_na[,colnames(remaining_train_knn_na[-1])]
 train_knn_na_svm_pred <- predict(train_knn_na_svm, newdata = test_knn_na_data, type = "raw")
 test_train_knn_na <- bind_cols(select(test_set, label = label), test_knn_na_data)
 train_knn_na_svm_res <- model_result(train_knn_na_svm_pred, test_train_knn_na$label)
 
-# 4.5.1 - 4.5.3 train_knn_sd
-train_knn_sd_svm <- train(as.factor(label)~., data = train_knn_sd_rose, method = "svmLinear", trControl = train_control_svm)
+# 4.5.1 - 4.5.5 train_knn_sd
+train_knn_sd_svm <- train(as.factor(label)~., data = train_knn_sd_rose, method = "svmLinear", trControl = train_control_svm, class.weights = class_weights_svm)
 test_knn_sd_data <- test_knn_sd[,colnames(remaining_train_knn_sd[-1])]
 train_knn_sd_svm_pred <- predict(train_knn_sd_svm, newdata = test_knn_sd_data, type = "raw")
 test_train_knn_sd <- bind_cols(select(test_set, label = label), test_knn_sd_data)
 train_knn_sd_svm_res <- model_result(train_knn_sd_svm_pred, test_train_knn_sd$label)
 
-# 4.6.1 - 4.6.3 train_knn_out
-train_knn_out_svm <- train(as.factor(label)~., data = train_knn_out_rose, method = "svmLinear", trControl = train_control_svm)
+# 4.6.1 - 4.6.5 train_knn_out
+train_knn_out_svm <- train(as.factor(label)~., data = train_knn_out_rose, method = "svmLinear", trControl = train_control_svm, class.weights = class_weights_svm)
 test_knn_outlier_data <- test_knn_outlier[,colnames(remaining_train_knn_outlier[-1])]
 train_knn_out_svm_pred <- predict(train_knn_out_svm, newdata = test_knn_outlier_data, type = "raw")
 test_train_knn_out <- bind_cols(select(test_set, label = label), test_knn_outlier_data)
@@ -2311,22 +2315,22 @@ hot_train_svm_pred <- predict(hot_train_svm, newdata = test_hot_train_sc, type =
 test_hot_train_sc <- bind_cols(select(test_set, label = label), test_hot_train_sc)
 hot_train_svm_res <- model_result(hot_train_svm_pred, test_hot_train_sc$label)
 
-# 4.10.1 - 4.10.3 train_hot_na
-train_hot_na_svm <- train(as.factor(label)~., data = train_hot_na_rose, method = "svmLinear", trControl = train_control_svm)
+# 4.10.1 - 4.10.5 train_hot_na
+train_hot_na_svm <- train(as.factor(label)~., data = train_hot_na_rose, method = "svmLinear", trControl = train_control_svm, class.weights = class_weights_svm)
 test_hot_na_data <- test_hot_na[,colnames(remaining_hot_na[-1])]
 train_hot_na_svm_pred <- predict(train_hot_na_svm, newdata = test_hot_na_data, type = "raw")
 test_train_hot_na <- bind_cols(select(test_set, label = label), test_hot_na_data)
 train_hot_na_svm_res <- model_result(train_hot_na_svm_pred, test_train_hot_na$label)
 
-# 4.11.1 - 4.11.3 train_hot_sd
-train_hot_sd_svm <- train(as.factor(label)~., data = train_hot_sd_rose, method = "svmLinear", trControl = train_control_svm)
+# 4.11.1 - 4.11.5 train_hot_sd
+train_hot_sd_svm <- train(as.factor(label)~., data = train_hot_sd_rose, method = "svmLinear", trControl = train_control_svm, class.weights = class_weights_svm)
 test_hot_sd_data <- test_hot_sd[,colnames(remaining_hot_sd[-1])]
 train_hot_sd_svm_pred <- predict(train_hot_sd_svm, newdata = test_hot_sd_data, type = "raw")
 test_train_hot_sd <- bind_cols(select(test_set, label = label), test_hot_sd_data)
 train_hot_sd_svm_res <- model_result(train_hot_sd_svm_pred, test_train_hot_sd$label)
 
-# 4.12.1 - 4.12.3 train_hot_out
-train_hot_out_svm <- train(as.factor(label)~., data = train_hot_out_rose, method = "svmLinear", trControl = train_control_svm)
+# 4.12.1 - 4.12.5 train_hot_out
+train_hot_out_svm <- train(as.factor(label)~., data = train_hot_out_rose, method = "svmLinear", trControl = train_control_svm, class.weights = class_weights_svm)
 test_hot_out_data <- test_hot_outlier[,colnames(remaining_hot_outlier[-1])]
 train_hot_out_svm_pred <- predict(train_hot_out_svm, newdata = test_hot_out_data, type = "raw")
 test_train_hot_out <- bind_cols(select(test_set, label = label), test_hot_out_data)
