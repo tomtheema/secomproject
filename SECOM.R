@@ -1,6 +1,6 @@
 # I Install/Load required packages --------------------------------------------
 if (!require("pacman")) install.packages("pacman")
-pacman::p_load(tidyverse, rlang, Hmisc, lubridate, corrplot, VIM, mice, Boruta, EFAtools, FactoMineR, psych, ROSE, smotefamily, randomForest, caret, ROCR)
+pacman::p_load(tidyverse, rlang, Hmisc, lubridate, corrplot, VIM, mice, Boruta, EFAtools, FactoMineR, psych, ROSE, smotefamily, randomForest, caret, ROCR, kknn)
 
 # II Check/Set working directory ----------------------------------------------
 getwd()
@@ -792,7 +792,6 @@ remaining_knn_na <- knn_na[,c("label",selected_knn_na_boruta)]
 saveRDS(remaining_knn_na, "remaining_knn_na.RDS")
 remaining_knn_na <- readRDS("remaining_knn_na.RDS")
 
-
 # 9.2 Perform Boruta algorithm on scaled 'knn_sd'
 selected_knn_sd_boruta <- performBoruta(knn_sd)
 # there are 19 important features, unstable results (sometimes 27 and sometimes 18)
@@ -1443,6 +1442,7 @@ saveRDS(test_red, "test_red.RDS")
 test_reduced <- readRDS("test_red.RDS")
 test_red <- test_reduced %>%
   dplyr::select(-c("label","date"))
+label <- as.factor(test_reduced$label)
 
 # 1.2 Outliers
 test_outlier <- identify_outliers(test_red)
@@ -1583,7 +1583,7 @@ model_result <- function(predictions, target) {
 }
 
 ROC <- function(model, test_data) {
-  pred_probs <- as.numeric(predict(model, newdata = test_data, type = "response"))
+  pred_probs <- as.numeric(predict(model, newdata = test_data, type = "raw"))
   pred <- prediction(as.numeric(pred_probs), test_data[1])          
   perf <- performance(pred, measure = "tpr", x.measure = "fpr") 
   roc_curve <- plot(perf, main = "ROC Curve", lwd = 3, col = "darkred")
@@ -1591,7 +1591,7 @@ ROC <- function(model, test_data) {
 }
 
 AUC <- function(model, test_data) {
-  pred_probs <- as.numeric(predict(model, newdata = test_data, type = "response"))
+  pred_probs <- as.numeric(predict(model, newdata = test_data, type = "raw"))
   pred <- prediction(as.numeric(pred_probs), test_data[1])
   perf <- performance(pred, measure = "tpr", x.measure = "fpr")
   auc_score <- as.numeric(performance(pred, measure = "auc")@y.values)
@@ -1599,7 +1599,8 @@ AUC <- function(model, test_data) {
 }
 # Train custom random forest model
 # Parameters for controlling the training with cross validation
-train_control <- trainControl(method = "cv", number = 5, search = "grid", summaryFunction = twoClassSummary)
+train_control <- trainControl(method = "cv", number = 5, search = "grid", sampling = "rose", summaryFunction =  twoClassSummary)
+train_control2 <- trainControl(method = "cv", number = 5, search = "grid", summaryFunction =  twoClassSummary)
 
 # Parameters of the random forest to be optimised
 tune_grid <- expand.grid(mtry = c(1:10), ntree = seq(50,400,50), nodesize = c(1:10))
@@ -1608,15 +1609,11 @@ tune_grid <- expand.grid(mtry = c(1:10), ntree = seq(50,400,50), nodesize = c(1:
 knn_na_rose_rf <- randomForest(as.factor(label)~., data = knn_na_rose,
                                ntree = 400, importance = T, localImp = T,
                                replace = T, nodesize = 5, proximity = F)
-test_knn_na_rf <- scaled(test_knn_na[,colnames(remaining_knn_na[-1])])
+test_knn_na_rf <- test_knn_na[,colnames(remaining_knn_na[-1])]
 knn_na_rose_rf_pred <- predict(knn_na_rose_rf, newdata = test_knn_na_rf, type = "class")
 knn_na_rose_rf_res <- model_result(knn_na_rose_rf_pred,label)
 
-knn_na_rose_rf2 <- train(as.factor(label)~., data = train_knn_na_rose, 
-                               method = customRF, metric = "Sens",
-                               trControl = train_control, tuneGrid = tune_grid)
-
- # 2.1.2 knn_na_smote
+# 2.1.2 knn_na_smote
 knn_na_smote <- knn_na_smote %>% rename(label = class)
 knn_na_smote_rf <- randomForest(as.factor(label)~., data = knn_na_smote,
                                 ntree = 400, importance = T, localImp = T,
@@ -1636,7 +1633,7 @@ knn_na_adasyn_rf_res <- model_result(knn_na_adasyn_rf_pred,label)
 knn_sd_rose_rf <- randomForest(as.factor(label)~., data = knn_sd_rose,
                                ntree = 400, importance = T, localImp = T,
                                replace = T, nodesize = 5, proximity = F)
-test_knn_sd_rf <- scaled(test_knn_sd[,colnames(remaining_knn_sd[-1])])
+test_knn_sd_rf <- test_knn_sd[,colnames(remaining_knn_sd[-1])]
 knn_sd_rose_rf_pred <- predict(knn_sd_rose_rf, newdata = test_knn_sd_rf, type = "class")
 knn_sd_rose_rf_res <- model_result(knn_sd_rose_rf_pred,label)
 
@@ -1684,22 +1681,23 @@ knn_train_adasyn_rf_res <- model_result(knn_train_adasyn_rf_pred,label)
 train_knn_na_rose_rf <- randomForest(as.factor(label)~., data = train_knn_na_rose,
                                      ntree = 400, importance = T, localImp = T,
                                      replace = T, nodesize = 5, proximity = F)
-test_knn_na_rev_rf <- test_knn_na[,colnames(remaining_train_knn_na[-1])]
+test_knn_na_rev_rf <- test_knn_na_rev[,colnames(remaining_train_knn_na[-1])]
 train_knn_na_rose_rf_pred <- predict(train_knn_na_rose_rf, newdata = test_knn_na_rev_rf, type = "class")
 train_knn_na_rose_rf_res <- model_result(train_knn_na_rose_rf_pred,label)
 
-# Train model, computation time ~ 30 mins
-train_knn_na_rose_rf2 <- train(as.factor(label)~., data = train_knn_na_rose, 
-                               method = customRF, metric = "Spec",
-                               trControl = train_control, tuneGrid = tune_grid)
-# mtry = 2, ntree = 350, nodesize = 1
-train_knn_na_rose_rf <- randomForest(as.factor(label)~., data = train_knn_na_rose,
-                                     mtry = 2, ntree = 350, nodesize = 1,importance = T, 
-                                     localImp = T, replace = T, proximity = F)
-test_knn_na_rev_rf <- test_knn_na[,colnames(remaining_train_knn_na[-1])]
-train_knn_na_rose_rf_pred <- predict(train_knn_na_rose_rf, newdata = test_knn_na_rev_rf, type = "class")
-train_knn_na_rose_rf_res <- model_result(train_knn_na_rose_rf_pred,label)
+# On scaled & centered dataset
+train_knn_na_rose_sc <- scale(train_knn_na_rose[-1], scale = T, center = T)
+train_knn_na_rose_sc <- bind_cols(label = train_knn_na_rose$label, train_knn_na_rose_sc)
+train_knn_na_rose_rf_sc <- randomForest(as.factor(label)~., data = train_knn_na_rose_sc,
+                                        ntree = 400, importance = T, localImp = T,
+                                        replace = T, nodesize = 5, proximity = F)
+test_knn_na_rev_rf_sc <- scale(test_knn_na_rev[,colnames(remaining_train_knn_na[-1])], scale = T, center = T)
+train_knn_na_rose_rf_pred_sc <- predict(train_knn_na_rose_rf_sc, newdata = test_knn_na_rev_rf_sc, type = "class")
+train_knn_na_rose_rf_res_sc <- model_result(train_knn_na_rose_rf_pred_sc,label)
 
+train_knn_na_rose_rf2_sc <- train(as.factor(label)~., data = train_knn_na_rose_sc, 
+                                  method = customRF, metric = "Spec",
+                                  trControl = train_control, tuneGrid = tune_grid)
 
 # 2.4.2 train_knn_na_smote
 train_knn_na_smote <- train_knn_na_smote %>% rename(label = class)
@@ -1709,7 +1707,7 @@ train_knn_na_smote_rf <- randomForest(as.factor(label)~., data = train_knn_na_sm
 train_knn_na_smote_rf_pred <- predict(train_knn_na_smote_rf, newdata = test_knn_na_rev_rf, type = "class")
 train_knn_na_smote_rf_res <- model_result(train_knn_na_smote_rf_pred,label)
 
-# 2.4.2 train_knn_na_adasyn
+# 2.4.3 train_knn_na_adasyn
 train_knn_na_adasyn <- train_knn_na_adasyn %>% rename(label = class)
 train_knn_na_adasyn_rf <- randomForest(as.factor(label)~.,data = train_knn_na_adasyn,
                                        ntree = 400, importance = T, localImp = T,
@@ -1717,22 +1715,12 @@ train_knn_na_adasyn_rf <- randomForest(as.factor(label)~.,data = train_knn_na_ad
 train_knn_na_adasyn_rf_pred <- predict(train_knn_na_adasyn_rf, newdata = test_knn_na_rev_rf, type = "class")
 train_knn_na_adasyn_rf_res <- model_result(train_knn_na_adasyn_rf_pred,label)
 
+
 # 2.5.1 train_knn_sd_rose
 train_knn_sd_rose_rf <- randomForest(as.factor(label)~., data = train_knn_sd_rose,
                                      ntree = 400, importance = T, localImp = T,
                                      replace = T, nodesize = 5, proximity = F)
-test_knn_sd_rev_rf <- test_knn_sd[,colnames(remaining_train_knn_sd[-1])]
-train_knn_sd_rose_rf_pred <- predict(train_knn_sd_rose_rf, newdata = test_knn_sd_rev_rf, type = "class")
-train_knn_sd_rose_rf_res <- model_result(train_knn_sd_rose_rf_pred,label)
-
-# Train model, computation time ~ 30 mins
-train_knn_sd_rose_rf2 <- train(as.factor(label)~., data = train_knn_na_rose, 
-                               method = customRF, metric = "Spec",
-                               trControl = train_control, tuneGrid = tune_grid)
-# mtry = 5, ntree = 300, nodesize = 10 
-train_knn_sd_rose_rf <- randomForest(as.factor(label)~., data = train_knn_sd_rose,
-                                     mtry = 5, ntree = 300, nodesize = 10,
-                                     importance = T, localImp = T, replace = T, proximity = F)
+test_knn_sd_rev_rf <- test_knn_sd_rev[,colnames(remaining_train_knn_sd[-1])]
 train_knn_sd_rose_rf_pred <- predict(train_knn_sd_rose_rf, newdata = test_knn_sd_rev_rf, type = "class")
 train_knn_sd_rose_rf_res <- model_result(train_knn_sd_rose_rf_pred,label)
 
@@ -1856,32 +1844,40 @@ test_hot_na_rev_rf <- test_hot_na[,colnames(remaining_hot_na[-1])]
 train_hot_na_rose_rf_pred <- predict(train_hot_na_rose_rf, newdata = test_hot_na_rev_rf, type = "class")
 train_hot_na_rose_rf_res <- model_result(train_hot_na_rose_rf_pred,label)
 
-train_hot_na_rose_rf2 <- train(as.factor(label)~., data = train_hot_na_rose, 
-                               method = customRF, metric = "Spec",
-                               trControl = train_control, tuneGrid = tune_grid)
- # mtry = 3, ntree = 50, nodesize = 3
-train_hot_na_rose_rf <- randomForest(as.factor(label)~., data = train_hot_na_rose,
-                                     mtry = 3, ntree = 50, nodesize = 3, importance = T, 
-                                     localImp = T,replace = T, proximity = F)
-train_hot_na_rose_rf_pred <- predict(train_hot_na_rose_rf, newdata = test_hot_na_rev_rf, type = "class")
-train_hot_na_rose_rf_res <- model_result(train_hot_na_rose_rf_pred,label)
+test_hot_na_rev_rf <- bind_cols(label = test_reduced$label, test_hot_na_rev_rf)
+train_hot_na_rose_rf_ROC <- ROC(train_hot_na_rose_rf,test_hot_na_rev_rf)
+train_hot_na_rose_rf_AUC <- AUC(train_hot_na_rose_rf,test_hot_na_rev_rf)
 
- # 2.10.2 train_hot_na_smote
+# Optimise with grid search and cross validation
+train_hot_na_rose_rf2 <- train(as.factor(label)~., data = train_hot_na_rose, 
+                               method = customRF, metric = "Spec", maximise = T,
+                               trControl = train_control2, tuneGrid = tune_grid)
+# mtry = 2, ntree = 150, nodesize = 10
+train_hot_na_rose_rf2 <- randomForest(as.factor(label)~., data = train_hot_na_rose,
+                                     mtry = 2, ntree = 150, nodesize = 10, importance = T, 
+                                     localImp = T,replace = T, proximity = F)
+train_hot_na_rose_rf2_pred <- predict(train_hot_na_rose_rf2, newdata = test_hot_na_rev_rf, type = "class")
+train_hot_na_rose_rf2_res <- model_result(train_hot_na_rose_rf_pred,label)
+
+# Optimise by balancing within cross validation, using weights and grid search
+weights <- ifelse(remaining_hot_na$label == 1,
+                  nrow(remaining_hot_na)/(2*sum(remaining_hot_na$label == 1)),
+                  nrow(remaining_hot_na)/(2*sum(remaining_hot_na$label ==-1)))
+x <- (2*sum(remaining_hot_na$label == 1))
+train_hot_na_rf <- train(as.factor(label)~., data = remaining_hot_na, 
+                         method = customRF, metric = "Spec", maximise = T,
+                         trControl = train_control, tuneGrid = tune_grid, weights = weights)
+train_hot_na_rf_pred <- predict(train_hot_na_rf, newdata = test_hot_na_rev_rf, type = "raw")
+train_hot_na_rf_res <- model_result(train_hot_na_rf_pred,label)
+
+train_hot_na_rose_rf_ROC <- ROC(train_hot_na_rf,test_hot_na_rev_rf)
+train_hot_na_rose_rf_AUC <- AUC(train_hot_na_rf,test_hot_na_rev_rf)
+
+# 2.10.2 train_hot_na_smote
 train_hot_na_smote <- train_hot_na_smote %>% rename(label = class)
 train_hot_na_smote_rf <- randomForest(as.factor(label)~., data = train_hot_na_smote,
                                       ntree = 400, importance = T, localImp = T,
                                       replace = T, nodesize = 5, proximity = F)
-train_hot_na_smote_rf_pred <- predict(train_hot_na_smote_rf, newdata = test_hot_na_rev_rf, type = "class")
-train_hot_na_smote_rf_res <- model_result(train_hot_na_smote_rf_pred,label)
-
-train_hot_na_smote_rf2 <- train(as.factor(label)~., data = train_hot_na_smote, 
-                               method = customRF, metric = "Spec",
-                               trControl = train_control, tuneGrid = tune_grid)
-# mtry =5, ntree = 200, nodesize = 1
-train_hot_na_smote <- train_hot_na_smote %>% rename(label = class)
-train_hot_na_smote_rf <- randomForest(as.factor(label)~., data = train_hot_na_smote,
-                                      mtry = 5, ntree = 200, nodesize = 1, 
-                                      importance = T, localImp = T, replace = T, proximity = F)
 train_hot_na_smote_rf_pred <- predict(train_hot_na_smote_rf, newdata = test_hot_na_rev_rf, type = "class")
 train_hot_na_smote_rf_res <- model_result(train_hot_na_smote_rf_pred,label)
 
@@ -1892,6 +1888,20 @@ train_hot_na_adasyn_rf <- randomForest(as.factor(label)~., data = train_hot_na_a
                                        replace = T, nodesize = 5, proximity = F)
 train_hot_na_adasyn_rf_pred <- predict(train_hot_na_adasyn_rf, newdata = test_hot_na_rev_rf, type = "class")
 train_hot_na_adasyn_rf_res <- model_result(train_hot_na_adasyn_rf_pred,label)
+
+# 2.10.4 train_hot_na_over
+train_hot_na_over_rf <- randomForest(as.factor(label)~., data = train_hot_na_over,
+                                     ntree = 400, importance = T, localImp = T,
+                                     replace = T, nodesize = 5, proximity = F)
+train_hot_na_over_rf_pred <- predict(train_hot_na_over_rf, newdata = test_hot_na_rev_rf, type = "class")
+train_hot_na_over_rf_res <- model_result(train_hot_na_over_rf_pred,label)
+
+# 2.10.5 train_hot_na_both
+train_hot_na_both_rf <- randomForest(as.factor(label)~., data = train_hot_na_both,
+                                     ntree = 400, importance = T, localImp = T,
+                                     replace = T, nodesize = 5, proximity = F)
+train_hot_na_both_rf_pred <- predict(train_hot_na_both_rf, newdata = test_hot_na_rev_rf, type = "class")
+train_hot_na_both_rf_res <- model_result(train_hot_na_both_rf_pred,label)
 
 # 2.11.1 train_hot_sd_rose
 train_hot_sd_rose_rf <- randomForest(as.factor(label)~., data = train_hot_sd_rose,
@@ -1911,6 +1921,16 @@ train_hot_sd_rose_rf <- randomForest(as.factor(label)~., data = train_hot_sd_ros
 train_hot_sd_rose_rf_pred <- predict(train_hot_sd_rose_rf, newdata = test_hot_sd_rev_rf, type = "class")
 train_hot_sd_rose_rf_res <- model_result(train_hot_sd_rose_rf_pred,label)
 
+# On scaled & centered dataset
+train_hot_sd_rose_sc <- scale(train_hot_sd_rose[-1], scale = T, center = T)
+train_hot_sd_rose_sc <- bind_cols(label = train_hot_sd_rose$label, train_hot_sd_rose_sc)
+train_hot_sd_rose_rf_sc <- randomForest(as.factor(label)~., data = train_hot_sd_rose_sc,
+                                        ntree = 400, importance = T, localImp = T,
+                                        replace = T, nodesize = 5, proximity = F)
+test_hot_sd_rev_rf_sc <- scale(test_hot_sd[,colnames(remaining_hot_sd[-1])], scale = T, center = T)
+train_hot_sd_rose_rf_pred_sc <- predict(train_hot_sd_rose_rf_sc, newdata = test_hot_sd_rev_rf_sc, type = "class")
+train_hot_sd_rose_rf_res_sc <- model_result(train_hot_sd_rose_rf_pred_sc,label)
+
 # 2.11.2 train_hot_sd_smote
 train_hot_sd_smote <- train_hot_sd_smote %>% rename(label = class)
 train_hot_sd_smote_rf <- randomForest(as.factor(label)~., data = train_hot_sd_smote,
@@ -1927,6 +1947,20 @@ train_hot_sd_adasyn_rf <- randomForest(as.factor(label)~., data = train_hot_sd_a
 train_hot_sd_adasyn_rf_pred <- predict(train_hot_sd_adasyn_rf, newdata = test_hot_sd_rev_rf, type = "class")
 train_hot_sd_adasyn_rf_res <- model_result(train_hot_sd_adasyn_rf_pred,label)
 
+# 2.11.4 train_hot_sd_over
+train_hot_sd_over_rf <- randomForest(as.factor(label)~., data = train_hot_sd_over,
+                                     ntree = 400, importance = T, localImp = T,
+                                     replace = T, nodesize = 5, proximity = F)
+train_hot_sd_over_rf_pred <- predict(train_hot_sd_over_rf, newdata = test_hot_sd_rev_rf, type = "class")
+train_hot_sd_over_rf_res <- model_result(train_hot_sd_over_rf_pred,label)
+
+# 2.11.5 train_hot_sd_both
+train_hot_sd_both_rf <- randomForest(as.factor(label)~., data = train_hot_sd_both,
+                                     ntree = 400, importance = T, localImp = T,
+                                     replace = T, nodesize = 5, proximity = F)
+train_hot_sd_both_rf_pred <- predict(train_hot_sd_both_rf, newdata = test_hot_sd_rev_rf, type = "class")
+train_hot_sd_both_rf_res <- model_result(train_hot_sd_both_rf_pred,label)
+
 # 2.12.1 train_hot_out_rose
 train_hot_out_rose_rf <- randomForest(as.factor(label)~., data = train_hot_out_rose,
                                       ntree = 400, importance = T, localImp = T,
@@ -1936,14 +1970,24 @@ train_hot_out_rose_rf_pred <- predict(train_hot_out_rose_rf, newdata = test_hot_
 train_hot_out_rose_rf_res <- model_result(train_hot_out_rose_rf_pred,label)
 
 train_hot_out_rose_rf2 <- train(as.factor(label)~., data = train_hot_out_rose, 
-                               method = customRF, metric = "Spec",
-                               trControl = train_control, tuneGrid = tune_grid)
+                                method = customRF, metric = "Spec",
+                                trControl = train_control, tuneGrid = tune_grid)
 # mtry = 2, ntree = 100, nodesize = 7
-train_hot_out_rose_rf <- randomForest(as.factor(label)~., data = train_hot_out_rose,
+train_hot_out_rose_rf2 <- randomForest(as.factor(label)~., data = train_hot_out_rose,
                                       mtry = 2, ntree = 100, nodesize = 7,
                                       importance = T, localImp = T, replace = T, proximity = F)
-train_hot_out_rose_rf_pred <- predict(train_hot_out_rose_rf, newdata = test_hot_out_rev_rf, type = "class")
-train_hot_out_rose_rf_res <- model_result(train_hot_out_rose_rf_pred,label)
+train_hot_out_rose_rf2_pred <- predict(train_hot_out_rose_rf2, newdata = test_hot_out_rev_rf, type = "class")
+train_hot_out_rose_rf2_res <- model_result(train_hot_out_rose_rf_pred,label)
+
+# On scaled & centered dataset
+train_hot_out_rose_sc <- scale(train_hot_out_rose[-1], scale = T, center = T)
+train_hot_out_rose_sc <- bind_cols(label = train_hot_out_rose$label, train_hot_out_rose_sc)
+train_hot_out_rose_rf_sc <- randomForest(as.factor(label)~., data = train_hot_out_rose_sc,
+                                         ntree = 400, importance = T, localImp = T,
+                                         replace = T, nodesize = 5, proximity = F)
+test_hot_out_rev_rf_sc <- scale(test_hot_outlier[,colnames(remaining_hot_outlier[-1])], scale = T, center = T)
+train_hot_out_rose_rf_pred_sc <- predict(train_hot_out_rose_rf_sc, newdata = test_hot_out_rev_rf_sc, type = "class")
+train_hot_out_rose_rf_res_sc <- model_result(train_hot_out_rose_rf_pred_sc,label)
 
 # 2.12.2 train_hot_out_smote
 train_hot_out_smote <- train_hot_out_smote %>% rename(label = class)
@@ -1962,20 +2006,36 @@ train_hot_out_adasyn_rf <- randomForest(as.factor(label)~., data = train_hot_out
 train_hot_out_adasyn_rf_pred <- predict(train_hot_out_adasyn_rf, newdata = test_hot_out_rev_rf, type = "class")
 train_hot_out_adasyn_rf_res <- model_result(train_hot_out_adasyn_rf_pred,label)
 
+# 2.12.4 train_hot_out_over
+train_hot_out_over_rf <- randomForest(as.factor(label)~., data = train_hot_out_over,
+                                      ntree = 400, importance = T, localImp = T,
+                                      replace = T, nodesize = 5, proximity = F)
+train_hot_out_over_rf_pred <- predict(train_hot_out_over_rf, newdata = test_hot_out_rev_rf, type = "class")
+train_hot_out_over_rf_res <- model_result(train_hot_out_over_rf_pred,label)
+
+# 2.12.5 train_hot_out_both
+train_hot_out_both_rf <- randomForest(as.factor(label)~., data = train_hot_out_both,
+                                      ntree = 400, importance = T, localImp = T,
+                                      replace = T, nodesize = 5, proximity = F)
+train_hot_out_both_rf_pred <- predict(train_hot_out_both_rf, newdata = test_hot_out_rev_rf, type = "class")
+train_hot_out_both_rf_res <- model_result(train_hot_out_both_rf_pred,label)
+
 # 3 kNN
 # Train custom random forest model
 # Parameters for controlling the training with cross validation
-train_control_knn <- trainControl(method = "repeatedcv", repeats = 5, search = "grid")
-
+train_control_knn <- trainControl(method = "repeatcv", repeats = 5, search = "grid")
+train_control_knn2 <- trainControl(method = "cv", number = 5, search = "grid", sampling = "rose")
 # Parameters of the random forest to be optimised
 tune_grid_knn <- expand.grid(k = seq(1,50,by=1))
+tune_grid_kknn <- expand.grid(ks = seq(1,50,by=1), distance = seq(1,50,by=1),kernel = c("rectangular", "triangular", "epanechnikov", "biweight"), kcv = 5)
+?kknn
 
 # 3.1.1 knn_na_rose
 knn_na_rose_knn <- train(as.factor(label)~., data = knn_na_rose, method = "knn",
                          trControl = train_control_knn, tuneGrid = tune_grid_knn)
-test_knn_na_knn <- scaled(test_knn_na[,colnames(remaining_knn_na[-1])])
+test_knn_na_knn <- test_knn_na[,colnames(remaining_knn_na[-1])]
 knn_na_rose_knn_pred <- predict(knn_na_rose_knn, newdata = test_knn_na_knn, type = "raw")
-knn_na_rose_knn_res <- model_result(knn_na_rose_knn_pred,label)
+knn_na_rose_knn_res <- model_result(knn_na_rose_knn_pred,label) 
 
 # 3.1.2 knn_na_smote
 knn_na_smote <- knn_na_smote %>% rename(label = class)
@@ -1987,45 +2047,45 @@ knn_na_smote_knn_res <- model_result(knn_na_smote_knn_pred,label)
 # 3.1.3 knn_na_adasyn
 knn_na_adasyn <- knn_na_adasyn %>% rename(label = class)
 knn_na_adasyn_knn <- train(as.factor(label)~., data = knn_na_adasyn, method = "knn",
-                          trControl = train_control_knn, tuneGrid = tune_grid_knn)
+                           trControl = train_control_knn, tuneGrid = tune_grid_knn)
 knn_na_adasyn_knn_pred <- predict(knn_na_adasyn_knn, newdata = test_knn_na_knn, type = "raw")
 knn_na_adasyn_knn_res <- model_result(knn_na_adasyn_knn_pred,label)
 
 # 3.2.1 knn_sd_rose
 knn_sd_rose_knn <- train(as.factor(label)~., data = knn_sd_rose, method = "knn",
-                           trControl = train_control_knn, tuneGrid = tune_grid_knn)
-test_knn_sd_knn <- scaled(test_knn_sd[,colnames(remaining_knn_sd[-1])])
+                         trControl = train_control_knn, tuneGrid = tune_grid_knn)
+test_knn_sd_knn <- test_knn_sd[,colnames(remaining_knn_sd[-1])]
 knn_sd_rose_knn_pred <- predict(knn_sd_rose_knn, newdata = test_knn_sd_knn, type = "raw")
 knn_sd_rose_knn_res <- model_result(knn_sd_rose_knn_pred,label)
 
 # 3.2.2 knn_sd_smote
 knn_sd_smote_knn <- train(as.factor(label)~., data = knn_sd_smote, method = "knn",
-                         trControl = train_control_knn, tuneGrid = tune_grid_knn)
+                          trControl = train_control_knn, tuneGrid = tune_grid_knn)
 knn_sd_smote_knn_pred <- predict(knn_sd_smote_knn, newdata = test_knn_sd_knn, type = "raw")
 knn_sd_smote_knn_res <- model_result(knn_sd_smote_knn_pred,label)
 
 # 3.2.3 knn_sd_adasyn
 knn_sd_adasyn_knn <- train(as.factor(label)~., data = knn_sd_adasyn, method = "knn",
-                          trControl = train_control_knn, tuneGrid = tune_grid_knn)
+                           trControl = train_control_knn, tuneGrid = tune_grid_knn)
 knn_sd_adasyn_knn_pred <- predict(knn_sd_adasyn_knn, newdata = test_knn_sd_knn, type = "raw")
 knn_sd_adasyn_knn_res <- model_result(knn_sd_adasyn_knn_pred,label)
 
 # 3.3.1 knn_train_rose
 knn_train_rose_knn <- train(as.factor(label)~., data = knn_train_rose, method = "knn",
-                           trControl = train_control_knn, tuneGrid = tune_grid_knn)
+                            trControl = train_control_knn, tuneGrid = tune_grid_knn)
 test_knn_train_knn <- scaled(test_knn_outlier[,colnames(remaining_knn_train[-1])])
 knn_train_rose_knn_pred <- predict(knn_train_rose_knn, newdata = test_knn_train_knn, type = "raw")
 knn_train_rose_knn_res <- model_result(knn_train_rose_knn_pred,label)
 
 # 3.3.2 knn_train_smote
 knn_train_smote_knn <- train(as.factor(label)~., data = knn_train_smote, method = "knn",
-                            trControl = train_control_knn, tuneGrid = tune_grid_knn)
+                             trControl = train_control_knn, tuneGrid = tune_grid_knn)
 knn_train_smote_knn_pred <- predict(knn_train_smote_knn, newdata = test_knn_train_knn, type = "raw")
 knn_train_smote_knn_res <- model_result(knn_train_smote_knn_pred,label)
 
 # 3.3.3 knn_train_adasyn
 knn_train_adasyn_knn <- train(as.factor(label)~., data = knn_train_adasyn, method = "knn",
-                             trControl = train_control_knn, tuneGrid = tune_grid_knn)
+                              trControl = train_control_knn, tuneGrid = tune_grid_knn)
 knn_train_adasyn_knn_pred <- predict(knn_train_adasyn_knn, newdata = test_knn_train_knn, type = "raw")
 knn_train_adasyn_knn_res <- model_result(knn_train_adasyn_knn_pred,label)
 
@@ -2033,8 +2093,8 @@ knn_train_adasyn_knn_res <- model_result(knn_train_adasyn_knn_pred,label)
 train_knn_na_rose_sc <- scale(train_knn_na_rose[-1], scale = T, center = T)
 train_knn_na_rose_sc <- bind_cols(label = train_knn_na_rose$label, train_knn_na_rose_sc)  
 train_knn_na_rose_knn <- train(as.factor(label)~., data = train_knn_na_rose_sc, method = "knn",
-                            trControl = train_control_knn, tuneGrid = tune_grid_knn)
-test_knn_na_sc_knn <- scale(test_knn_na[,colnames(remaining_train_knn_na[-1])], scale = T, center = T)
+                               trControl = train_control_knn, tuneGrid = tune_grid_knn)
+test_knn_na_sc_knn <- scale(test_knn_na_rev[,colnames(remaining_train_knn_na[-1])], scale = T, center = T)
 train_knn_na_rose_knn_pred <- predict(train_knn_na_rose_knn, newdata = test_knn_na_sc_knn, type = "raw")
 train_knn_na_rose_knn_res <- model_result(train_knn_na_rose_knn_pred,label)
 
@@ -2042,7 +2102,7 @@ train_knn_na_rose_knn_res <- model_result(train_knn_na_rose_knn_pred,label)
 train_knn_na_smote_sc <- scale(train_knn_na_smote[-length(train_knn_na_smote)], scale = T, center = T)
 train_knn_na_smote_sc <- bind_cols(label = train_knn_na_smote$label, train_knn_na_smote_sc)  
 train_knn_na_smote_knn <- train(as.factor(label)~., data = train_knn_na_smote_sc, method = "knn",
-                               trControl = train_control_knn, tuneGrid = tune_grid_knn)
+                                trControl = train_control_knn, tuneGrid = tune_grid_knn)
 train_knn_na_smote_knn_pred <- predict(train_knn_na_smote_knn, newdata = test_knn_na_sc_knn, type = "raw")
 train_knn_na_smote_knn_res <- model_result(train_knn_na_smote_knn_pred,label)
 
@@ -2050,7 +2110,7 @@ train_knn_na_smote_knn_res <- model_result(train_knn_na_smote_knn_pred,label)
 train_knn_na_adasyn_sc <- scale(train_knn_na_adasyn[-length(train_knn_na_adasyn)], scale = T, center = T)
 train_knn_na_adasyn_sc <- bind_cols(label = train_knn_na_adasyn$label, train_knn_na_adasyn_sc)  
 train_knn_na_adasyn_knn <- train(as.factor(label)~., data = train_knn_na_adasyn_sc, method = "knn",
-                                trControl = train_control_knn, tuneGrid = tune_grid_knn)
+                                 trControl = train_control_knn, tuneGrid = tune_grid_knn)
 train_knn_na_adasyn_knn_pred <- predict(train_knn_na_adasyn_knn, newdata = test_knn_na_sc_knn, type = "raw")
 train_knn_na_adasyn_knn_res <- model_result(train_knn_na_adasyn_knn_pred,label)
 
@@ -2059,7 +2119,7 @@ train_knn_sd_rose_sc <- scale(train_knn_sd_rose[-1], scale = T, center = T)
 train_knn_sd_rose_sc <- bind_cols(label = train_knn_sd_rose$label, train_knn_sd_rose_sc)  
 train_knn_sd_rose_knn <- train(as.factor(label)~., data = train_knn_sd_rose_sc, method = "knn",
                                trControl = train_control_knn, tuneGrid = tune_grid_knn)
-test_knn_sd_sc_knn <- scale(test_knn_sd[,colnames(remaining_train_knn_sd[-1])], scale = T, center = T)
+test_knn_sd_sc_knn <- scale(test_knn_sd_rev[,colnames(remaining_train_knn_sd[-1])], scale = T, center = T)
 train_knn_sd_rose_knn_pred <- predict(train_knn_sd_rose_knn, newdata = test_knn_sd_sc_knn, type = "raw")
 train_knn_sd_rose_knn_res <- model_result(train_knn_sd_rose_knn_pred,label)
 
@@ -2083,7 +2143,7 @@ train_knn_sd_adasyn_knn_res <- model_result(train_knn_sd_adasyn_knn_pred,label)
 train_knn_out_rose_sc <- scale(train_knn_out_rose[-1], scale = T, center = T)
 train_knn_out_rose_sc <- bind_cols(label = train_knn_out_rose$label, train_knn_out_rose_sc)  
 train_knn_out_rose_knn <- train(as.factor(label)~., data = train_knn_out_rose_sc, method = "knn",
-                               trControl = train_control_knn, tuneGrid = tune_grid_knn)
+                                trControl = train_control_knn, tuneGrid = tune_grid_knn)
 test_knn_out_sc_knn <- scale(test_knn_outlier[,colnames(remaining_train_knn_outlier[-1])], scale = T, center = T)
 train_knn_out_rose_knn_pred <- predict(train_knn_out_rose_knn, newdata = test_knn_out_sc_knn, type = "raw")
 train_knn_out_rose_knn_res <- model_result(train_knn_out_rose_knn_pred,label)
@@ -2092,7 +2152,7 @@ train_knn_out_rose_knn_res <- model_result(train_knn_out_rose_knn_pred,label)
 train_knn_out_smote_sc <- scale(train_knn_out_smote[-length(train_knn_out_smote)], scale = T, center = T)
 train_knn_out_smote_sc <- bind_cols(label = train_knn_out_smote$label, train_knn_out_smote_sc)  
 train_knn_out_smote_knn <- train(as.factor(label)~., data = train_knn_out_smote_sc, method = "knn",
-                                trControl = train_control_knn, tuneGrid = tune_grid_knn)
+                                 trControl = train_control_knn, tuneGrid = tune_grid_knn)
 train_knn_out_smote_knn_pred <- predict(train_knn_out_smote_knn, newdata = test_knn_out_sc_knn, type = "raw")
 train_knn_out_smote_knn_res <- model_result(train_knn_out_smote_knn_pred,label)
 
@@ -2100,7 +2160,7 @@ train_knn_out_smote_knn_res <- model_result(train_knn_out_smote_knn_pred,label)
 train_knn_out_adasyn_sc <- scale(train_knn_out_adasyn[-length(train_knn_out_adasyn)], scale = T, center = T)
 train_knn_out_adasyn_sc <- bind_cols(label = train_knn_out_adasyn$label, train_knn_out_adasyn_sc)  
 train_knn_out_adasyn_knn <- train(as.factor(label)~., data = train_knn_out_adasyn_sc, method = "knn",
-                                 trControl = train_control_knn, tuneGrid = tune_grid_knn)
+                                  trControl = train_control_knn, tuneGrid = tune_grid_knn)
 train_knn_out_adasyn_knn_pred <- predict(train_knn_out_adasyn_knn, newdata = test_knn_out_sc_knn, type = "raw")
 train_knn_out_adasyn_knn_res <- model_result(train_knn_out_adasyn_knn_pred,label)
 
@@ -2219,16 +2279,29 @@ train_hot_sd_adasyn_knn_res <- model_result(train_hot_sd_adasyn_knn_pred,label)
 train_hot_out_rose_sc <- scale(train_hot_out_rose[-1], scale = T, center = T)
 train_hot_out_rose_sc <- bind_cols(label = train_hot_out_rose$label, train_hot_out_rose_sc)  
 train_hot_out_rose_knn <- train(as.factor(label)~., data = train_hot_out_rose_sc, method = "knn",
-                               trControl = train_control_knn, tuneGrid = tune_grid_knn)
+                                trControl = train_control_knn, tuneGrid = tune_grid_knn)
 test_hot_out_sc_knn <- scale(test_hot_outlier[,colnames(remaining_hot_outlier[-1])], scale = T, center = T)
 train_hot_out_rose_knn_pred <- predict(train_hot_out_rose_knn, newdata = test_hot_out_sc_knn, type = "raw")
 train_hot_out_rose_knn_res <- model_result(train_hot_out_rose_knn_pred,label)
+
+test_hot_out_sc_knn <- bind_cols(label = test_reduced$label, test_hot_out_sc_knn)
+train_hot_out_rose_knn_ROC <- ROC(train_hot_out_rose_knn,test_hot_out_sc_knn)
+train_hot_out_rose_knn_AUC <- AUC(train_hot_out_rose_knn,test_hot_out_sc_knn)
+
+train_hot_out_sc <- scale(remaining_hot_outlier[-1], scale = T, center = T)
+train_hot_out_sc <- bind_cols(label = remaining_hot_outlier$label, train_hot_out_sc)  
+train_hot_outlier_kknn <- train.kknn(as.factor(label)~., data = train_hot_out_sc,
+                                   kmax = 50, distance = 10, kernel = c("rectangular","traingular", "epanechnikov", "biweight", "optimal"), kcv = 10)
+train_hot_outlier_kknn_pred <- predict(train_hot_outlier_rf, newdata = test_hot_out_sc_knn, type = "raw")
+train_hot_outlier_kknn_res <- model_result(train_hot_outlier_rf_pred,label)
+train_hot_out_rose_knn_ROC <- ROC(train_hot_outlier_kknn,test_hot_out_sc_knn)
+train_hot_out_rose_knn_AUC <- AUC(train_hot_outlier_kknn,test_hot_out_sc_knn)
 
 # 3.12.2 train_hot_out_smote
 train_hot_out_smote_sc <- scale(train_hot_out_smote[-length(train_hot_out_smote)], scale = T, center = T)
 train_hot_out_smote_sc <- bind_cols(label = train_hot_out_smote$label, train_hot_out_smote_sc)  
 train_hot_out_smote_knn <- train(as.factor(label)~., data = train_hot_out_smote_sc, method = "knn",
-                                trControl = train_control_knn, tuneGrid = tune_grid_knn)
+                                 trControl = train_control_knn, tuneGrid = tune_grid_knn)
 train_hot_out_smote_knn_pred <- predict(train_hot_out_smote_knn, newdata = test_hot_out_sc_knn, type = "raw")
 train_hot_out_smote_knn_res <- model_result(train_hot_out_smote_knn_pred,label)
 
@@ -2236,7 +2309,7 @@ train_hot_out_smote_knn_res <- model_result(train_hot_out_smote_knn_pred,label)
 train_hot_out_adasyn_sc <- scale(train_hot_out_adasyn[-length(train_hot_out_adasyn)], scale = T, center = T)
 train_hot_out_adasyn_sc <- bind_cols(label = train_hot_out_adasyn$label, train_hot_out_adasyn_sc)  
 train_hot_out_adasyn_knn <- train(as.factor(label)~., data = train_hot_out_adasyn_sc, method = "knn",
-                                 trControl = train_control_knn, tuneGrid = tune_grid_knn)
+                                  trControl = train_control_knn, tuneGrid = tune_grid_knn)
 train_hot_out_adasyn_knn_pred <- predict(train_hot_out_adasyn_knn, newdata = test_hot_out_sc_knn, type = "raw")
 train_hot_out_adasyn_knn_res <- model_result(train_hot_out_adasyn_knn_pred,label)
 
